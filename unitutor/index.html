@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniTutor - University Peer Tutoring Management System</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="index.html">
+                    <h1>UniTutor</h1>
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#how-it-works">How It Works</a></li>
+                <li><a href="login.html">Login</a></li>
+                <li><a href="register.html" class="btn btn-primary">Register</a></li>
+            </ul>
+            <button class="mobile-menu-toggle btn-icon">☰</button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container hero-content">
+            <h1 class="animate-fade-in">Learn Better. Together.</h1>
+            <p class="animate-fade-in">Connect with qualified peer tutors from your university and get support in the modules that matter.</p>
+            <div class="hero-buttons animate-fade-in">
+                <a href="register.html" class="btn btn-lg btn-primary">Get Started</a>
+                <a href="#how-it-works" class="btn btn-lg btn-outline" style="border-color: white; color: white;">Learn More</a>
+            </div>
+            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&h=400&fit=crop" alt="Students studying together" class="hero-image animate-scale-in">
+        </div>
+    </section>
+
+    <!-- Statistics Section -->
+    <section class="stats-section" id="about">
+        <div class="container">
+            <div class="section-header animate-fade-in">
+                <h2>Our Impact</h2>
+                <p>See how UniTutor is helping students succeed</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card animate-fade-in">
+                    <h3 id="stat-students">0</h3>
+                    <p>Active Students</p>
+                </div>
+                <div class="stat-card animate-fade-in">
+                    <h3 id="stat-tutors">0</h3>
+                    <p>Qualified Tutors</p>
+                </div>
+                <div class="stat-card animate-fade-in">
+                    <h3 id="stat-modules">0</h3>
+                    <p>Modules Covered</p>
+                </div>
+                <div class="stat-card animate-fade-in">
+                    <h3 id="stat-sessions">0</h3>
+                    <p>Completed Sessions</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works">
+        <div class="container">
+            <div class="section-header animate-fade-in">
+                <h2>How UniTutor Works</h2>
+                <p>Get started with peer tutoring in 6 simple steps</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card animate-scale-in">
+                    <div class="step-number">1</div>
+                    <h3>Find a Tutor</h3>
+                    <p>Browse available tutors by module</p>
+                </div>
+                <div class="step-card animate-scale-in">
+                    <div class="step-number">2</div>
+                    <h3>Select Module</h3>
+                    <p>Choose the module you need help with</p>
+                </div>
+                <div class="step-card animate-scale-in">
+                    <div class="step-number">3</div>
+                    <h3>Choose Slot</h3>
+                    <p>Select an available time slot</p>
+                </div>
+                <div class="step-card animate-scale-in">
+                    <div class="step-number">4</div>
+                    <h3>Book Session</h3>
+                    <p>Submit your booking request</p>
+                </div>
+                <div class="step-card animate-scale-in">
+                    <div class="step-number">5</div>
+                    <h3>Attend Session</h3>
+                    <p>Meet your tutor for the session</p>
+                </div>
+                <div class="step-card animate-scale-in">
+                    <div class="step-number">6</div>
+                    <h3>Give Feedback</h3>
+                    <p>Rate your tutoring experience</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 UniTutor - University Peer Tutoring Management System</p>
+            <p>A Database Systems Project</p>
+        </div>
+    </footer>
+
+    <script src="assets/js/database.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script>
+        // Load statistics from database
+        document.addEventListener('DOMContentLoaded', function() {
+            const students = DB.getCount('Student');
+            const tutors = DB.getCount('Tutor');
+            const modules = DB.getCount('Module');
+            const tutorials = DB.getCount('Tutorial');
+            
+            document.getElementById('stat-students').textContent = students + '+';
+            document.getElementById('stat-tutors').textContent = tutors + '+';
+            document.getElementById('stat-modules').textContent = modules + '+';
+            document.getElementById('stat-sessions').textContent = tutorials * 10 + '+';
+        });
+
+        // Mobile menu toggle
+        document.querySelector('.mobile-menu-toggle').addEventListener('click', function() {
+            document.querySelector('.nav-menu').classList.toggle('active');
+        });
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+    </script>
+</body>
+</html>

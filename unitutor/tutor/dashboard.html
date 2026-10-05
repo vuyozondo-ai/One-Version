@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Dashboard - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Tutor</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Tutor Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="active">Dashboard</a>
+                <a href="modules.html">My Modules</a>
+                <a href="slots.html">Available Slots</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Tutor Dashboard</h1><p>Overview of your tutoring activities</p></div>
+            <div id="alert-container"></div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3 id="stat-students">0</h3>
+                    <p>Total Students</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-upcoming">0</h3>
+                    <p>Upcoming Sessions</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-pending">0</h3>
+                    <p>Pending Bookings</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-completed">0</h3>
+                    <p>Completed Sessions</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-rating">0</h3>
+                    <p>Average Rating</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>Pending Bookings</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="pending-bookings-table">
+                            <thead>
+                                <tr>
+                                    <th>Booking ID</th>
+                                    <th>Student</th>
+                                    <th>Module</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('tutor')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadDashboard();
+        });
+
+        function loadDashboard() {
+            const user = Auth.getCurrentUser();
+            const bookings = DB.getAll('Booking').filter(b => b.TutorID === user.id);
+            const tutorials = DB.getAll('Tutorial');
+            const feedback = DB.getAll('Feedback').filter(f => f.TutorID === user.id);
+            const students = DB.getAll('Student');
+            const modules = DB.getAll('Module');
+
+            // Statistics
+            const uniqueStudents = [...new Set(bookings.map(b => b.StudentID))].length;
+            document.getElementById('stat-students').textContent = uniqueStudents;
+
+            const upcomingSessions = tutorials.filter(s => 
+                bookings.some(b => b.BookingID === s.BookingID) && s.TutorialStatus === 'Scheduled'
+            );
+            document.getElementById('stat-upcoming').textContent = upcomingSessions.length;
+
+            const pendingBookings = bookings.filter(b => b.BookingStatus === 'Pending');
+            document.getElementById('stat-pending').textContent = pendingBookings.length;
+
+            const completedSessions = tutorials.filter(s => 
+                bookings.some(b => b.BookingID === s.BookingID) && s.TutorialStatus === 'Completed'
+            );
+            document.getElementById('stat-completed').textContent = completedSessions.length;
+
+            const avgRating = feedback.length > 0 
+                ? (feedback.reduce((sum, f) => sum + f.Rating, 0) / feedback.length).toFixed(1)
+                : 'N/A';
+            document.getElementById('stat-rating').textContent = avgRating;
+
+            // Pending bookings
+            const tbody = document.querySelector('#pending-bookings-table tbody');
+            tbody.innerHTML = '';
+
+            pendingBookings.slice(0, 5).forEach(booking => {
+                const student = students.find(s => s.StudentID === booking.StudentID);
+                const module = modules.find(m => m.ModuleCode === booking.ModuleCode);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${booking.BookingID}</td>
+                    <td>${student ? student.StudentName + ' ' + student.StudentSurname : 'N/A'}</td>
+                    <td>${module ? module.ModuleName : 'N/A'}</td>
+                    <td>${booking.BookingDate}</td>
+                    <td>
+                        <button onclick="confirmBooking('${booking.BookingID}')" class="btn btn-sm btn-success">Confirm</button>
+                        <button onclick="rejectBooking('${booking.BookingID}')" class="btn btn-sm btn-danger">Reject</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            if (pendingBookings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">No pending bookings</td></tr>';
+            }
+        }
+
+        function confirmBooking(bookingId) {
+            const result = DB.confirmBooking(bookingId);
+            if (result.success) {
+                showAlert('Booking confirmed successfully!', 'success');
+                loadDashboard();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        }
+
+        function rejectBooking(bookingId) {
+            DB.update('Booking', bookingId, 'BookingID', { BookingStatus: 'Cancelled' });
+            showAlert('Booking rejected', 'warning');
+            loadDashboard();
+        }
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

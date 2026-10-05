@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bookings - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Student</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Student Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="find_tutor.html">Find Tutor</a>
+                <a href="bookings.html" class="active">My Bookings</a>
+                <a href="sessions.html">My Sessions</a>
+                <a href="feedback.html">My Feedback</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>My Bookings</h1><p>View and manage your tutoring bookings</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="filter-bar">
+                        <div class="filter-group">
+                            <label>Status</label>
+                            <select id="filter-status" class="form-control">
+                                <option value="">All Statuses</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Confirmed">Confirmed</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <button onclick="filterBookings()" class="btn btn-primary">Filter</button>
+                        <button onclick="loadBookings()" class="btn btn-secondary">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>All Bookings</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="bookings-table">
+                            <thead>
+                                <tr>
+                                    <th>Booking ID</th>
+                                    <th>Tutor</th>
+                                    <th>Module</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Cancel</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body"><p>Are you sure you want to cancel this booking? This action cannot be undone.</p></div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button>
+                <button type="button" onclick="confirmDelete()" class="btn btn-danger">Cancel Booking</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        let deleteId = null;
+        if (!Auth.requireAuth('student')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadBookings();
+        });
+
+        function loadBookings() {
+            const user = Auth.getCurrentUser();
+            const bookings = DB.getAll('Booking').filter(b => b.StudentID === user.id);
+            const tutors = DB.getAll('Tutor');
+            const modules = DB.getAll('Module');
+            const tbody = document.querySelector('#bookings-table tbody');
+            tbody.innerHTML = '';
+
+            bookings.forEach(booking => {
+                const tutor = tutors.find(t => t.TutorID === booking.TutorID);
+                const module = modules.find(m => m.ModuleCode === booking.ModuleCode);
+                const statusClass = booking.BookingStatus === 'Confirmed' ? 'badge-success' : 
+                                   booking.BookingStatus === 'Completed' ? 'badge-info' : 
+                                   booking.BookingStatus === 'Cancelled' ? 'badge-danger' : 'badge-warning';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${booking.BookingID}</td>
+                    <td>${tutor ? tutor.TutorName + ' ' + tutor.TutorSurname : 'N/A'}</td>
+                    <td>${module ? module.ModuleName : 'N/A'}</td>
+                    <td>${booking.BookingDate}</td>
+                    <td><span class="badge ${statusClass}">${booking.BookingStatus}</span></td>
+                    <td>
+                        ${booking.BookingStatus === 'Pending' ? `<button onclick="cancelBooking('${booking.BookingID}')" class="btn btn-sm btn-danger">Cancel</button>` : '-'}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterBookings() {
+            const user = Auth.getCurrentUser();
+            const status = document.getElementById('filter-status').value;
+            let bookings = DB.getAll('Booking').filter(b => b.StudentID === user.id);
+            
+            if (status) {
+                bookings = bookings.filter(b => b.BookingStatus === status);
+            }
+
+            const tutors = DB.getAll('Tutor');
+            const modules = DB.getAll('Module');
+            const tbody = document.querySelector('#bookings-table tbody');
+            tbody.innerHTML = '';
+
+            bookings.forEach(booking => {
+                const tutor = tutors.find(t => t.TutorID === booking.TutorID);
+                const module = modules.find(m => m.ModuleCode === booking.ModuleCode);
+                const statusClass = booking.BookingStatus === 'Confirmed' ? 'badge-success' : 
+                                   booking.BookingStatus === 'Completed' ? 'badge-info' : 
+                                   booking.BookingStatus === 'Cancelled' ? 'badge-danger' : 'badge-warning';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${booking.BookingID}</td>
+                    <td>${tutor ? tutor.TutorName + ' ' + tutor.TutorSurname : 'N/A'}</td>
+                    <td>${module ? module.ModuleName : 'N/A'}</td>
+                    <td>${booking.BookingDate}</td>
+                    <td><span class="badge ${statusClass}">${booking.BookingStatus}</span></td>
+                    <td>
+                        ${booking.BookingStatus === 'Pending' ? `<button onclick="cancelBooking('${booking.BookingID}')" class="btn btn-sm btn-danger">Cancel</button>` : '-'}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function cancelBooking(id) { deleteId = id; document.getElementById('delete-modal').classList.add('active'); }
+        function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('active'); deleteId = null; }
+        function confirmDelete() {
+            if (deleteId) {
+                DB.update('Booking', deleteId, 'BookingID', { BookingStatus: 'Cancelled' });
+                showAlert('Booking cancelled successfully', 'success');
+                loadBookings();
+                closeDeleteModal();
+            }
+        }
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

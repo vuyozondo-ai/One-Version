@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Sessions - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Admin</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Admin Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="students.html">Students</a>
+                <a href="tutors.html">Tutors</a>
+                <a href="departments.html">Departments</a>
+                <a href="programs.html">Programs</a>
+                <a href="modules.html">Modules</a>
+                <a href="applications.html">Applications</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html" class="active">Sessions</a>
+                <a href="payments.html">Payments</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="../reports/index.html">Reports</a>
+                <a href="database.html">Database Management</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Manage Sessions</h1><p>View and manage all tutoring sessions</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="filter-bar">
+                        <div class="filter-group">
+                            <label>Status</label>
+                            <select id="filter-status" class="form-control">
+                                <option value="">All Statuses</option>
+                                <option value="Scheduled">Scheduled</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <button onclick="filterSessions()" class="btn btn-primary">Filter</button>
+                        <button onclick="loadSessions()" class="btn btn-secondary">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>All Sessions</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="sessions-table">
+                            <thead>
+                                <tr>
+                                    <th>Tutorial ID</th>
+                                    <th>Booking ID</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Mode</th>
+                                    <th>Type</th>
+                                    <th>Attendance</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="session-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Edit Session</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="session-form">
+                <input type="hidden" id="tutorial_id">
+                <div class="form-group">
+                    <label for="tutorial_date">Date</label>
+                    <input type="date" id="tutorial_date" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="start_time">Start Time</label>
+                        <input type="time" id="start_time" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="end_time">End Time</label>
+                        <input type="time" id="end_time" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tutorial_mode">Mode</label>
+                        <select id="tutorial_mode" class="form-control" required>
+                            <option value="Online">Online</option>
+                            <option value="In-Person">In-Person</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tutorial_type">Type</label>
+                        <select id="tutorial_type" class="form-control" required>
+                            <option value="One-on-One">One-on-One</option>
+                            <option value="Group">Group</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="tutorial_attendance">Attendance</label>
+                    <input type="number" id="tutorial_attendance" class="form-control" required min="0" max="100" placeholder="e.g., 1, 20, 50">
+                </div>
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" class="form-control" required>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Delete</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body"><p>Are you sure you want to delete this session? This action cannot be undone.</p></div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button>
+                <button type="button" onclick="confirmDelete()" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        let deleteId = null;
+        if (!Auth.requireAuth('admin')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadSessions();
+        });
+
+        function loadSessions() {
+            const tutorials = DB.getAll('Tutorial');
+            const tbody = document.querySelector('#sessions-table tbody');
+            tbody.innerHTML = '';
+
+            tutorials.forEach(tutorial => {
+                const statusClass = tutorial.TutorialStatus === 'Completed' ? 'badge-success' : 
+                                   tutorial.TutorialStatus === 'Cancelled' ? 'badge-danger' : 'badge-info';
+                const startTime = tutorial.TutorialStartTime ? tutorial.TutorialStartTime.substring(0, 5) : 'N/A';
+                const endTime = tutorial.TutorialEndTime ? tutorial.TutorialEndTime.substring(0, 5) : 'N/A';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${tutorial.TutorialID}</td>
+                    <td>${tutorial.BookingID}</td>
+                    <td>${tutorial.TutorialDate}</td>
+                    <td>${startTime}–${endTime}</td>
+                    <td>${tutorial.TutorialMode}</td>
+                    <td>${tutorial.TutorialType}</td>
+                    <td>${tutorial.TutorialAttendance}</td>
+                    <td><span class="badge ${statusClass}">${tutorial.TutorialStatus}</span></td>
+                    <td>
+                        <button onclick="editSession('${tutorial.TutorialID}')" class="btn btn-sm btn-primary">Edit</button>
+                        <button onclick="deleteSession('${tutorial.TutorialID}')" class="btn btn-sm btn-danger">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterSessions() {
+            const status = document.getElementById('filter-status').value;
+            const tutorials = DB.getAll('Tutorial');
+            const filtered = status ? tutorials.filter(t => t.TutorialStatus === status) : tutorials;
+            const tbody = document.querySelector('#sessions-table tbody');
+            tbody.innerHTML = '';
+
+            filtered.forEach(tutorial => {
+                const statusClass = tutorial.TutorialStatus === 'Completed' ? 'badge-success' : 
+                                   tutorial.TutorialStatus === 'Cancelled' ? 'badge-danger' : 'badge-info';
+                const startTime = tutorial.TutorialStartTime ? tutorial.TutorialStartTime.substring(0, 5) : 'N/A';
+                const endTime = tutorial.TutorialEndTime ? tutorial.TutorialEndTime.substring(0, 5) : 'N/A';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${tutorial.TutorialID}</td>
+                    <td>${tutorial.BookingID}</td>
+                    <td>${tutorial.TutorialDate}</td>
+                    <td>${startTime}–${endTime}</td>
+                    <td>${tutorial.TutorialMode}</td>
+                    <td>${tutorial.TutorialType}</td>
+                    <td>${tutorial.TutorialAttendance}</td>
+                    <td><span class="badge ${statusClass}">${tutorial.TutorialStatus}</span></td>
+                    <td>
+                        <button onclick="editSession('${tutorial.TutorialID}')" class="btn btn-sm btn-primary">Edit</button>
+                        <button onclick="deleteSession('${tutorial.TutorialID}')" class="btn btn-sm btn-danger">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function editSession(id) {
+            const tutorial = DB.getById('Tutorial', id, 'TutorialID');
+            if (!tutorial) return;
+            document.getElementById('modal-title').textContent = 'Edit Tutorial';
+            document.getElementById('tutorial_id').value = tutorial.TutorialID;
+            document.getElementById('tutorial_date').value = tutorial.TutorialDate;
+            document.getElementById('start_time').value = tutorial.TutorialStartTime ? tutorial.TutorialStartTime.substring(0, 5) : '';
+            document.getElementById('end_time').value = tutorial.TutorialEndTime ? tutorial.TutorialEndTime.substring(0, 5) : '';
+            document.getElementById('tutorial_mode').value = tutorial.TutorialMode;
+            document.getElementById('tutorial_type').value = tutorial.TutorialType;
+            document.getElementById('tutorial_attendance').value = tutorial.TutorialAttendance;
+            document.getElementById('status').value = tutorial.TutorialStatus;
+            document.getElementById('session-modal').classList.add('active');
+        }
+
+        function closeModal() { document.getElementById('session-modal').classList.remove('active'); }
+        function deleteSession(id) { deleteId = id; document.getElementById('delete-modal').classList.add('active'); }
+        function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('active'); deleteId = null; }
+        function confirmDelete() {
+            if (deleteId) {
+                DB.delete('Tutorial', deleteId, 'TutorialID');
+                showAlert('Tutorial deleted successfully', 'success');
+                loadSessions();
+                closeDeleteModal();
+            }
+        }
+
+        document.getElementById('session-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const tutorialId = document.getElementById('tutorial_id').value;
+            const data = {
+                TutorialDate: document.getElementById('tutorial_date').value,
+                TutorialStartTime: document.getElementById('start_time').value,
+                TutorialEndTime: document.getElementById('end_time').value,
+                TutorialMode: document.getElementById('tutorial_mode').value,
+                TutorialType: document.getElementById('tutorial_type').value,
+                TutorialAttendance: parseInt(document.getElementById('tutorial_attendance').value),
+                TutorialStatus: document.getElementById('status').value
+            };
+
+            DB.update('Tutorial', parseInt(tutorialId), 'TutorialID', data);
+            showAlert('Tutorial updated successfully', 'success');
+            closeModal();
+            loadSessions();
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

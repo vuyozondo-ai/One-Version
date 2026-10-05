@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - UniTutor</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="index.html">
+                    <h1>UniTutor</h1>
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="register.html">Register</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Login Section -->
+    <section>
+        <div class="container">
+            <div class="section-header">
+                <h2>Login</h2>
+                <p>Access your UniTutor account</p>
+            </div>
+            <div style="max-width: 500px; margin: 0 auto;">
+                <div class="card">
+                    <div id="alert-container"></div>
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" class="form-control" required placeholder="Enter your email">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" class="form-control" required placeholder="Enter your password">
+                        </div>
+                        <div class="form-group">
+                            <label for="role">Role</label>
+                            <select id="role" class="form-control" required>
+                                <option value="">Select your role</option>
+                                <option value="student">Student</option>
+                                <option value="tutor">Tutor</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">Login</button>
+                    </form>
+                    <div style="margin-top: 1rem; text-align: center;">
+                        <p>Don't have an account? <a href="register.html">Register as Student</a></p>
+                        <p><a href="register-tutor.html">Register as Tutor</a></p>
+                        <p><a href="register-admin.html">Register as Admin</a></p>
+                    </div>
+                </div>
+                
+                <!-- Test Credentials -->
+                <div class="card" style="margin-top: 1rem;">
+                    <div class="card-header">
+                        <h3>Test Credentials (Backup)</h3>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Admin:</strong> admin@unitutor.test / Admin123</p>
+                        <p><strong>Student:</strong> student1@unitutor.test / Student123</p>
+                        <p><strong>Tutor:</strong> tutor1@unitutor.test / Tutor123</p>
+                        <button type="button" onclick="fillTestCredentials('admin')" class="btn btn-sm btn-primary" style="margin-top: 0.5rem;">Fill Admin</button>
+                        <button type="button" onclick="fillTestCredentials('student')" class="btn btn-sm btn-success" style="margin-top: 0.5rem;">Fill Student</button>
+                        <button type="button" onclick="fillTestCredentials('tutor')" class="btn btn-sm btn-info" style="margin-top: 0.5rem;">Fill Tutor</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 UniTutor - University Peer Tutoring Management System</p>
+        </div>
+    </footer>
+
+    <script src="assets/js/database.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script>
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
+            const alertContainer = document.getElementById('alert-container');
+            
+            // Validate inputs
+            if (!email || !password || !role) {
+                alertContainer.innerHTML = '<div class="alert alert-danger">Please fill in all fields</div>';
+                return;
+            }
+            
+            // Attempt login
+            const result = Auth.login(email, password, role);
+            
+            if (result.success) {
+                alertContainer.innerHTML = '<div class="alert alert-success">Login successful! Redirecting...</div>';
+                setTimeout(() => {
+                    Auth.redirectBasedOnRole();
+                }, 1000);
+            } else {
+                alertContainer.innerHTML = '<div class="alert alert-danger">' + result.message + '</div>';
+            }
+        });
+
+        function fillTestCredentials(role) {
+            const credentials = {
+                admin: { email: 'admin@unitutor.test', password: 'Admin123' },
+                student: { email: 'student1@unitutor.test', password: 'Student123' },
+                tutor: { email: 'tutor1@unitutor.test', password: 'Tutor123' }
+            };
+            
+            document.getElementById('email').value = credentials[role].email;
+            document.getElementById('password').value = credentials[role].password;
+            document.getElementById('role').value = role;
+        }
+
+        // Redirect if already logged in
+        if (Auth.isAuthenticated()) {
+            Auth.redirectBasedOnRole();
+        }
+    </script>
+</body>
+</html>

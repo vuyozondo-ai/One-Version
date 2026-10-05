@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sessions - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Tutor</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Tutor Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="modules.html">My Modules</a>
+                <a href="slots.html">Available Slots</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html" class="active">Sessions</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Sessions</h1><p>View your tutoring sessions</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="filter-bar">
+                        <div class="filter-group">
+                            <label>Status</label>
+                            <select id="filter-status" class="form-control">
+                                <option value="">All Statuses</option>
+                                <option value="Scheduled">Scheduled</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <button onclick="filterSessions()" class="btn btn-primary">Filter</button>
+                        <button onclick="loadSessions()" class="btn btn-secondary">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>All Sessions</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="sessions-table">
+                            <thead>
+                                <tr>
+                                    <th>Session ID</th>
+                                    <th>Type</th>
+                                    <th>Student/Module</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Mode</th>
+                                    <th>Status</th>
+                                    <th>Attendance</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="session-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Update Session</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="session-form">
+                <input type="hidden" id="tutorial_id">
+                <div class="form-group">
+                    <label for="tutorial_mode">Mode</label>
+                    <select id="tutorial_mode" class="form-control" required>
+                        <option value="In-Person">In-Person</option>
+                        <option value="Online">Online</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tutorial_type">Type</label>
+                    <select id="tutorial_type" class="form-control" required>
+                        <option value="Individual">Individual</option>
+                        <option value="Group">Group</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tutorial_attendance">Attendance</label>
+                    <select id="tutorial_attendance" class="form-control" required>
+                        <option value="Attended">Attended</option>
+                        <option value="Missed">Missed</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                </div>
+                <div class="form-group" id="public-attendance-group" style="display: none;">
+                    <label for="public_attendance_count">Number of Students Attended</label>
+                    <input type="number" id="public_attendance_count" class="form-control" min="0" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="tutorial_status">Status</label>
+                    <select id="tutorial_status" class="form-control" required>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('tutor')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadSessions();
+        });
+
+        function loadSessions() {
+            const user = Auth.getCurrentUser();
+            const tbody = document.querySelector('#sessions-table tbody');
+            tbody.innerHTML = '';
+
+            // Load private sessions
+            const bookings = DB.getAll('Booking').filter(b => b.TutorID === user.id);
+            const tutorials = DB.getAll('Tutorial').filter(s => bookings.some(b => b.BookingID === s.BookingID));
+            const students = DB.getAll('Student');
+            const modules = DB.getAll('Module');
+
+            tutorials.forEach(tutorial => {
+                const booking = bookings.find(b => b.BookingID === tutorial.BookingID);
+                const student = students.find(s => s.StudentID === booking.StudentID);
+                const module = modules.find(m => m.ModuleCode === booking.ModuleCode);
+                const statusClass = tutorial.TutorialStatus === 'Completed' ? 'badge-success' : 
+                                   tutorial.TutorialStatus === 'Cancelled' ? 'badge-danger' : 'badge-info';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${tutorial.TutorialID}</td>
+                    <td><span class="badge badge-info">Private</span></td>
+                    <td>${student ? student.StudentName + ' ' + student.StudentSurname : 'N/A'} (${module ? module.ModuleName : 'N/A'})</td>
+                    <td>${tutorial.TutorialDate}</td>
+                    <td>${tutorial.TutorialStartTime} - ${tutorial.TutorialEndTime}</td>
+                    <td>${tutorial.TutorialMode}</td>
+                    <td><span class="badge ${statusClass}">${tutorial.TutorialStatus}</span></td>
+                    <td>${tutorial.TutorialAttendance}</td>
+                    <td>
+                        <button onclick="updateSession('${tutorial.TutorialID}', 'private', '${tutorial.TutorialMode}', '${tutorial.TutorialType}', '${tutorial.TutorialAttendance}', '${tutorial.TutorialStatus}')" class="btn btn-sm btn-primary">Update</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Load public sessions
+            const publicSessions = DB.getAll('PublicSession').filter(ps => 
+                ps.PrimaryTutorID === user.id || 
+                (ps.AdditionalTutorIDs && ps.AdditionalTutorIDs.includes(user.id))
+            );
+
+            publicSessions.forEach(session => {
+                const module = modules.find(m => m.ModuleCode === session.ModuleCode);
+                const statusClass = session.SessionStatus === 'Active' ? 'badge-success' : 
+                                   session.SessionStatus === 'Completed' ? 'badge-info' : 'badge-danger';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${session.SessionID}</td>
+                    <td><span class="badge badge-warning">Public</span></td>
+                    <td>${module ? module.ModuleName : 'N/A'}</td>
+                    <td>${session.NormalSlot || session.AfterHoursSlot || 'N/A'}</td>
+                    <td>${session.NormalSlot ? session.NormalSlot.split('|')[1] : (session.AfterHoursSlot ? session.AfterHoursSlot.split('|')[1] : 'N/A')}</td>
+                    <td>In-Person</td>
+                    <td><span class="badge ${statusClass}">${session.SessionStatus}</span></td>
+                    <td>${session.AttendanceCount || 0}</td>
+                    <td>
+                        <button onclick="updateSession('${session.SessionID}', 'public', 'In-Person', 'Group', '${session.AttendanceCount || 0}', '${session.SessionStatus}')" class="btn btn-sm btn-primary">Update</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterSessions() {
+            const user = Auth.getCurrentUser();
+            const status = document.getElementById('filter-status').value;
+            const tbody = document.querySelector('#sessions-table tbody');
+            tbody.innerHTML = '';
+
+            // Filter private sessions
+            const bookings = DB.getAll('Booking').filter(b => b.TutorID === user.id);
+            let tutorials = DB.getAll('Tutorial').filter(s => bookings.some(b => b.BookingID === s.BookingID));
+            const students = DB.getAll('Student');
+            const modules = DB.getAll('Module');
+            
+            if (status) {
+                tutorials = tutorials.filter(s => s.TutorialStatus === status);
+            }
+
+            tutorials.forEach(tutorial => {
+                const booking = bookings.find(b => b.BookingID === tutorial.BookingID);
+                const student = students.find(s => s.StudentID === booking.StudentID);
+                const module = modules.find(m => m.ModuleCode === booking.ModuleCode);
+                const statusClass = tutorial.TutorialStatus === 'Completed' ? 'badge-success' : 
+                                   tutorial.TutorialStatus === 'Cancelled' ? 'badge-danger' : 'badge-info';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${tutorial.TutorialID}</td>
+                    <td><span class="badge badge-info">Private</span></td>
+                    <td>${student ? student.StudentName + ' ' + student.StudentSurname : 'N/A'} (${module ? module.ModuleName : 'N/A'})</td>
+                    <td>${tutorial.TutorialDate}</td>
+                    <td>${tutorial.TutorialStartTime} - ${tutorial.TutorialEndTime}</td>
+                    <td>${tutorial.TutorialMode}</td>
+                    <td><span class="badge ${statusClass}">${tutorial.TutorialStatus}</span></td>
+                    <td>${tutorial.TutorialAttendance}</td>
+                    <td>
+                        <button onclick="updateSession('${tutorial.TutorialID}', 'private', '${tutorial.TutorialMode}', '${tutorial.TutorialType}', '${tutorial.TutorialAttendance}', '${tutorial.TutorialStatus}')" class="btn btn-sm btn-primary">Update</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Filter public sessions
+            let publicSessions = DB.getAll('PublicSession').filter(ps => 
+                ps.PrimaryTutorID === user.id || 
+                (ps.AdditionalTutorIDs && ps.AdditionalTutorIDs.includes(user.id))
+            );
+
+            if (status) {
+                publicSessions = publicSessions.filter(ps => ps.SessionStatus === status);
+            }
+
+            publicSessions.forEach(session => {
+                const module = modules.find(m => m.ModuleCode === session.ModuleCode);
+                const statusClass = session.SessionStatus === 'Active' ? 'badge-success' : 
+                                   session.SessionStatus === 'Completed' ? 'badge-info' : 'badge-danger';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${session.SessionID}</td>
+                    <td><span class="badge badge-warning">Public</span></td>
+                    <td>${module ? module.ModuleName : 'N/A'}</td>
+                    <td>${session.NormalSlot || session.AfterHoursSlot || 'N/A'}</td>
+                    <td>${session.NormalSlot ? session.NormalSlot.split('|')[1] : (session.AfterHoursSlot ? session.AfterHoursSlot.split('|')[1] : 'N/A')}</td>
+                    <td>In-Person</td>
+                    <td><span class="badge ${statusClass}">${session.SessionStatus}</span></td>
+                    <td>${session.AttendanceCount || 0}</td>
+                    <td>
+                        <button onclick="updateSession('${session.SessionID}', 'public', 'In-Person', 'Group', '${session.AttendanceCount || 0}', '${session.SessionStatus}')" class="btn btn-sm btn-primary">Update</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateSession(id, type, mode, sessionType, attendance, status) {
+            document.getElementById('tutorial_id').value = id;
+            document.getElementById('tutorial_mode').value = mode;
+            document.getElementById('tutorial_type').value = sessionType;
+            document.getElementById('tutorial_status').value = status;
+            
+            if (type === 'public') {
+                document.getElementById('tutorial_attendance').parentElement.style.display = 'none';
+                document.getElementById('public-attendance-group').style.display = 'block';
+                document.getElementById('public_attendance_count').value = attendance || 0;
+            } else {
+                document.getElementById('tutorial_attendance').parentElement.style.display = 'block';
+                document.getElementById('public-attendance-group').style.display = 'none';
+                document.getElementById('tutorial_attendance').value = attendance;
+            }
+            
+            document.getElementById('session-modal').classList.add('active');
+        }
+
+        function closeModal() { document.getElementById('session-modal').classList.remove('active'); }
+
+        document.getElementById('session-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const sessionId = document.getElementById('tutorial_id').value;
+            const isPublic = document.getElementById('public-attendance-group').style.display !== 'none';
+            
+            if (isPublic) {
+                const data = {
+                    SessionStatus: document.getElementById('tutorial_status').value,
+                    AttendanceCount: parseInt(document.getElementById('public_attendance_count').value)
+                };
+                DB.update('PublicSession', sessionId, 'SessionID', data);
+            } else {
+                const data = {
+                    TutorialMode: document.getElementById('tutorial_mode').value,
+                    TutorialType: document.getElementById('tutorial_type').value,
+                    TutorialAttendance: document.getElementById('tutorial_attendance').value,
+                    TutorialStatus: document.getElementById('tutorial_status').value
+                };
+                DB.update('Tutorial', sessionId, 'TutorialID', data);
+            }
+            
+            showAlert('Session updated successfully', 'success');
+            closeModal();
+            loadSessions();
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

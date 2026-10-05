@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+>title>My Modules - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Tutor</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Tutor Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="modules.html" class="active">My Modules</a>
+                <a href="slots.html">Available Slots</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>My Modules</h1><p>View the modules you tutor</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-header"><h2>Assigned Modules</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="modules-table">
+                            <thead>
+                                <tr>
+                                    <th>Module Code</th>
+                                    <th>Module Name</th>
+                                    <th>Program</th>
+                                    <th>Department</th>
+                                    <th>Proficiency</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('tutor')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadModules();
+        });
+
+        function loadModules() {
+            const user = Auth.getCurrentUser();
+            const tutorModules = DB.getTutorModules(user.id);
+            const tbody = document.querySelector('#modules-table tbody');
+            tbody.innerHTML = '';
+
+            if (tutorModules.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">No modules assigned. Contact administrator to get assigned.</td></tr>';
+                return;
+            }
+
+            tutorModules.forEach(tm => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${tm.ModuleCode || 'N/A'}</td>
+                    <td>${tm.ModuleName || 'N/A'}</td>
+                    <td>${tm.ProgrammeName || 'N/A'}</td>
+                    <td>${tm.DepartmentName || 'N/A'}</td>
+                    <td><span class="badge badge-info">${tm.ProficiencyLevel || 'N/A'}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Performance Report - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Admin</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Admin Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="../admin/dashboard.html">Dashboard</a>
+                <a href="../admin/students.html">Students</a>
+                <a href="../admin/tutors.html">Tutors</a>
+                <a href="../admin/departments.html">Departments</a>
+                <a href="../admin/programs.html">Programs</a>
+                <a href="../admin/modules.html">Modules</a>
+                <a href="../admin/applications.html">Applications</a>
+                <a href="../admin/bookings.html">Bookings</a>
+                <a href="../admin/sessions.html">Sessions</a>
+                <a href="../admin/payments.html">Payments</a>
+                <a href="../admin/feedback.html">Feedback</a>
+                <a href="index.html" class="active">Reports</a>
+                <a href="../admin/database.html">Database Management</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Tutor Performance Report</h1>
+                <p>Overview of tutor session statistics and ratings</p>
+                <a href="index.html" class="btn btn-secondary">Back to Reports</a>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>Report Summary</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="report-table">
+                            <thead>
+                                <tr>
+                                    <th>Tutor</th>
+                                    <th>Tutor Number</th>
+                                    <th>Total Sessions</th>
+                                    <th>Completed Sessions</th>
+                                    <th>Average Rating</th>
+                                    <th>Students Helped</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('admin')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadReport();
+        });
+
+        function loadReport() {
+            const reportData = DB.getTutorPerformanceReport();
+            const tbody = document.querySelector('#report-table tbody');
+            tbody.innerHTML = '';
+
+            reportData.forEach(tutor => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${tutor.TutorName}</td>
+                    <td>${tutor.TutorEmail}</td>
+                    <td>${tutor.total_sessions}</td>
+                    <td><span class="badge badge-success">${tutor.completed_sessions}</span></td>
+                    <td><span class="badge badge-info">${tutor.average_rating}</span></td>
+                    <td>${tutor.students_helped}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>

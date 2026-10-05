@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Feedback - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Student</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Student Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="find_tutor.html">Find Tutor</a>
+                <a href="bookings.html">My Bookings</a>
+                <a href="sessions.html">My Sessions</a>
+                <a href="feedback.html" class="active">My Feedback</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>My Feedback</h1><p>View your feedback history and submit new feedback</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card" id="give-feedback-card" style="display: none;">
+                <div class="card-header">
+                    <h2>Give Feedback</h2>
+                    <button onclick="closeFeedbackForm()" class="btn btn-sm btn-secondary">Cancel</button>
+                </div>
+                <div class="card-body">
+                    <form id="feedback-form">
+                        <input type="hidden" id="booking_id">
+                        <div class="form-group">
+                            <label for="rating">Rating (1-5)</label>
+                            <select id="rating" class="form-control" required>
+                                <option value="">Select rating</option>
+                                <option value="5">5 - Excellent</option>
+                                <option value="4">4 - Very Good</option>
+                                <option value="3">3 - Good</option>
+                                <option value="2">2 - Fair</option>
+                                <option value="1">1 - Poor</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="comments">Comments</label>
+                            <textarea id="comments" class="form-control" required placeholder="Share your experience..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Submit Feedback</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>Feedback History</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="feedback-table">
+                            <thead>
+                                <tr>
+                                    <th>Feedback ID</th>
+                                    <th>Tutor</th>
+                                    <th>Module</th>
+                                    <th>Rating</th>
+                                    <th>Comments</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('student')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            
+            // Check if booking_id is in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookingId = urlParams.get('booking_id');
+            
+            if (bookingId) {
+                openFeedbackForm(bookingId);
+            }
+            
+            loadFeedback();
+        });
+
+        function loadFeedback() {
+            const user = Auth.getCurrentUser();
+            const feedback = DB.getAll('Feedback').filter(f => f.StudentID === user.id);
+            const bookings = DB.getAll('Booking');
+            const tutors = DB.getAll('Tutor');
+            const modules = DB.getAll('Module');
+            const tbody = document.querySelector('#feedback-table tbody');
+            tbody.innerHTML = '';
+
+            feedback.forEach(f => {
+                const booking = bookings.find(b => b.BookingID === f.BookingID);
+                const tutor = tutors.find(t => t.TutorID === f.TutorID);
+                const module = modules.find(m => m.ModuleCode === booking?.ModuleCode);
+                const stars = '★'.repeat(f.Rating) + '☆'.repeat(5 - f.Rating);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${f.FeedbackID}</td>
+                    <td>${tutor ? tutor.TutorName + ' ' + tutor.TutorSurname : 'N/A'}</td>
+                    <td>${module ? module.ModuleName : 'N/A'}</td>
+                    <td><span style="color: #f59e0b;">${stars}</span> (${f.Rating}/5)</td>
+                    <td>${f.FeedbackComments}</td>
+                    <td>${new Date(f.FeedbackDate).toLocaleDateString()}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function openFeedbackForm(bookingId) {
+            document.getElementById('booking_id').value = bookingId;
+            document.getElementById('give-feedback-card').style.display = 'block';
+            document.getElementById('give-feedback-card').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeFeedbackForm() {
+            document.getElementById('give-feedback-card').style.display = 'none';
+            document.getElementById('feedback-form').reset();
+        }
+
+        document.getElementById('feedback-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const user = Auth.getCurrentUser();
+            const bookingId = parseInt(document.getElementById('booking_id').value);
+            const booking = DB.getById('Booking', bookingId, 'BookingID');
+            
+            const data = {
+                FeedbackID: Date.now(),
+                StudentID: user.id,
+                TutorID: booking.TutorID,
+                BookingID: bookingId,
+                Rating: parseInt(document.getElementById('rating').value),
+                FeedbackComments: document.getElementById('comments').value,
+                FeedbackDate: new Date().toISOString()
+            };
+
+            DB.add('Feedback', data);
+            showAlert('Feedback submitted successfully!', 'success');
+            closeFeedbackForm();
+            loadFeedback();
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

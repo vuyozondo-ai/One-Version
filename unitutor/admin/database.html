@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Management - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Admin</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Admin Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="students.html">Students</a>
+                <a href="tutors.html">Tutors</a>
+                <a href="departments.html">Departments</a>
+                <a href="programs.html">Programs</a>
+                <a href="modules.html">Modules</a>
+                <a href="applications.html">Applications</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="payments.html">Payments</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="../reports/index.html">Reports</a>
+                <a href="database.html" class="active">Database Management</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Database Management</h1><p>View and manage database tables</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-header"><h2>Database Tables</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="tables-table">
+                            <thead>
+                                <tr>
+                                    <th>Table Name</th>
+                                    <th>Records</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="table-data-card" style="display: none;">
+                <div class="card-header">
+                    <h2 id="table-data-title">Table Data</h2>
+                    <button onclick="closeTableData()" class="btn btn-sm btn-secondary">Close</button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="table-data"></table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>Database Operations</h2></div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Reset Database</label>
+                        <p style="color: var(--text-muted); margin-bottom: 1rem;">This will delete all data and restore the initial sample data. This action cannot be undone.</p>
+                        <button onclick="resetDatabase()" class="btn btn-danger">Reset Database</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Reset</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body"><p>Are you sure you want to reset the database? This will permanently delete all system data except administrator accounts. This action cannot be undone.</p></div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button>
+                <button type="button" onclick="confirmReset()" class="btn btn-danger">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('admin')) window.location.href = '../login.html';
+
+        const tables = [
+            'Administrator', 'Department', 'Program', 'Module', 'Student', 'Tutor',
+            'TutorModule', 'AvailableSlot', 'Booking', 'Tutorial', 'Application',
+            'Feedback', 'Payment', 'PublicSession', 'AuditTrail'
+        ];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadTables();
+        });
+
+        function loadTables() {
+            const tbody = document.querySelector('#tables-table tbody');
+            tbody.innerHTML = '';
+
+            tables.forEach(tableName => {
+                const count = DB.getCount(tableName);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${tableName}</strong></td>
+                    <td>${count} records</td>
+                    <td>
+                        <button onclick="viewTableData('${tableName}')" class="btn btn-sm btn-primary">View Data</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function viewTableData(tableName) {
+            const data = DB.getAll(tableName);
+            const table = document.getElementById('table-data');
+            
+            if (data.length === 0) {
+                table.innerHTML = '<thead><tr><th>No data</th></tr></thead><tbody><tr><td>This table is empty</td></tr></tbody>';
+            } else {
+                const headers = Object.keys(data[0]);
+                let html = '<thead><tr>';
+                headers.forEach(h => html += `<th>${h}</th>`);
+                html += '</tr></thead><tbody>';
+                
+                data.forEach(row => {
+                    html += '<tr>';
+                    headers.forEach(h => {
+                        let value = row[h];
+                        if (typeof value === 'object' && value !== null) {
+                            value = JSON.stringify(value);
+                        }
+                        html += `<td>${value !== undefined && value !== null ? value : '-'}</td>`;
+                    });
+                    html += '</tr>';
+                });
+                html += '</tbody>';
+                table.innerHTML = html;
+            }
+
+            document.getElementById('table-data-title').textContent = `${tableName} Data`;
+            document.getElementById('table-data-card').style.display = 'block';
+            document.getElementById('table-data-card').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeTableData() {
+            document.getElementById('table-data-card').style.display = 'none';
+        }
+
+        function resetDatabase() {
+            document.getElementById('delete-modal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.remove('active');
+        }
+
+        function confirmReset() {
+            DB.resetDatabase();
+            showAlert('Database reset successfully. Administrator accounts preserved.', 'success');
+            loadTables();
+            closeDeleteModal();
+        }
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

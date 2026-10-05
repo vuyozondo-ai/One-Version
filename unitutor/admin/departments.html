@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Departments - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Admin</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Admin Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="students.html">Students</a>
+                <a href="tutors.html">Tutors</a>
+                <a href="departments.html" class="active">Departments</a>
+                <a href="programs.html">Programs</a>
+                <a href="modules.html">Modules</a>
+                <a href="applications.html">Applications</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="payments.html">Payments</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="../reports/index.html">Reports</a>
+                <a href="database.html">Database Management</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Manage Departments</h1><p>Add, view, edit, and delete departments</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-body">
+                    <button onclick="showAddModal()" class="btn btn-success">Add Department</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>All Departments</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="departments-table">
+                            <thead>
+                                <tr>
+                                    <th>Department ID</th>
+                                    <th>Department Name</th>
+                                    <th>Faculty</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="department-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add Department</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="department-form">
+                <input type="hidden" id="department_id">
+                <div class="form-group">
+                    <label for="department_name">Department Name</label>
+                    <input type="text" id="department_name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="faculty">Faculty</label>
+                    <input type="text" id="faculty" class="form-control" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Delete</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body"><p>Are you sure you want to delete this department? This action cannot be undone.</p></div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button>
+                <button type="button" onclick="confirmDelete()" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        let deleteId = null;
+        if (!Auth.requireAuth('admin')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadDepartments();
+        });
+
+        function loadDepartments() {
+            const departments = DB.getAll('Department');
+            const tbody = document.querySelector('#departments-table tbody');
+            tbody.innerHTML = '';
+
+            departments.forEach(dept => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${dept.DepartmentID}</td>
+                    <td>${dept.DepartmentName}</td>
+                    <td>${dept.Faculty || 'N/A'}</td>
+                    <td>
+                        <button onclick="editDepartment('${dept.DepartmentID}')" class="btn btn-sm btn-primary">Edit</button>
+                        <button onclick="deleteDepartment('${dept.DepartmentID}')" class="btn btn-sm btn-danger">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function showAddModal() {
+            document.getElementById('modal-title').textContent = 'Add Department';
+            document.getElementById('department-form').reset();
+            document.getElementById('department_id').value = '';
+            document.getElementById('department-modal').classList.add('active');
+        }
+
+        function editDepartment(id) {
+            const dept = DB.getById('Department', id, 'DepartmentID');
+            if (!dept) return;
+            document.getElementById('modal-title').textContent = 'Edit Department';
+            document.getElementById('department_id').value = dept.DepartmentID;
+            document.getElementById('department_name').value = dept.DepartmentName;
+            document.getElementById('faculty').value = dept.Faculty || '';
+            document.getElementById('department-modal').classList.add('active');
+        }
+
+        function closeModal() { document.getElementById('department-modal').classList.remove('active'); }
+        function deleteDepartment(id) { deleteId = id; document.getElementById('delete-modal').classList.add('active'); }
+        function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('active'); deleteId = null; }
+        function confirmDelete() {
+            if (deleteId) {
+                DB.delete('Department', deleteId, 'DepartmentID');
+                showAlert('Department deleted successfully', 'success');
+                loadDepartments();
+                closeDeleteModal();
+            }
+        }
+
+        document.getElementById('department-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const deptId = document.getElementById('department_id').value;
+            const data = {
+                DepartmentName: document.getElementById('department_name').value,
+                Faculty: document.getElementById('faculty').value,
+                AdminID: 'AD001'
+            };
+
+            if (deptId) {
+                DB.update('Department', deptId, 'DepartmentID', data);
+                showAlert('Department updated successfully', 'success');
+            } else {
+                data.DepartmentID = DB.generateSequentialID('DP', 'Department', 'DepartmentID');
+                DB.add('Department', data);
+                showAlert('Department added successfully', 'success');
+            }
+            closeModal();
+            loadDepartments();
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

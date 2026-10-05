@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Students - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="../index.html">
+                    <h1>UniTutor</h1>
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Admin</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Dashboard Layout -->
+    <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Admin Panel</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="students.html" class="active">Students</a>
+                <a href="tutors.html">Tutors</a>
+                <a href="departments.html">Departments</a>
+                <a href="programs.html">Programs</a>
+                <a href="modules.html">Modules</a>
+                <a href="applications.html">Applications</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="payments.html">Payments</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="../reports/index.html">Reports</a>
+                <a href="database.html">Database Management</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Manage Students</h1>
+                <p>Add, view, edit, and delete students</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <!-- Search and Add -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="search-bar">
+                        <input type="text" id="search-input" class="form-control" placeholder="Search by name, student number, or email...">
+                        <button onclick="searchStudents()" class="btn btn-primary">Search</button>
+                        <button onclick="showAddModal()" class="btn btn-success">Add Student</button>
+                        <button onclick="loadStudents()" class="btn btn-secondary">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Students Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>All Students</h2>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="students-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Contact</th>
+                                    <th>Year of Study</th>
+                                    <th>Program</th>
+                                    <th>Password</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="student-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add Student</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="student-form">
+                <input type="hidden" id="student_id">
+                <div class="form-group">
+                    <label for="student_id_input">Student ID</label>
+                    <input type="text" id="student_id_input" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="student_name">Student Name</label>
+                        <input type="text" id="student_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="student_surname">Student Surname</label>
+                        <input type="text" id="student_surname" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="student_email">Email</label>
+                    <input type="email" id="student_email" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="student_contact">Contact Number</label>
+                        <input type="number" id="student_contact" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="student_year">Year of Study</label>
+                        <input type="number" id="student_year" class="form-control" required min="1" max="6">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="program_id">Program</label>
+                    <select id="program_id" class="form-control" required></select>
+                </div>
+                <div class="form-group" id="password-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Delete</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this student? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button>
+                <button type="button" onclick="confirmDelete()" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        let deleteId = null;
+
+        // Check authentication
+        if (!Auth.requireAuth('admin')) {
+            window.location.href = '../login.html';
+        }
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            
+            loadPrograms();
+            loadStudents();
+        });
+
+        function loadPrograms() {
+            const programs = DB.getAll('Program');
+            const select = document.getElementById('program_id');
+            select.innerHTML = '<option value="">Select program</option>';
+            programs.forEach(program => {
+                const option = document.createElement('option');
+                option.value = program.ProgrammeID;
+                option.textContent = program.ProgrammeName;
+                select.appendChild(option);
+            });
+        }
+
+        function loadStudents() {
+            const students = DB.getAll('Student');
+            const programs = DB.getAll('Program');
+            const tbody = document.querySelector('#students-table tbody');
+            tbody.innerHTML = '';
+
+            students.forEach(student => {
+                const program = programs.find(p => p.ProgrammeID === student.ProgrammeID);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${student.StudentID}</td>
+                    <td>${student.StudentName} ${student.StudentSurname}</td>
+                    <td>${student.StudentEmail}</td>
+                    <td>${student.StudentContactNumber}</td>
+                    <td>${student.StudentYearOfStudy}</td>
+                    <td>${program ? program.ProgrammeName : 'N/A'}</td>
+                    <td>••••••••</td>
+                    <td>
+                        <button onclick="editStudent('${student.StudentID}')" class="btn btn-sm btn-primary">Edit</button>
+                        <button onclick="deleteStudent('${student.StudentID}')" class="btn btn-sm btn-danger">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function searchStudents() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const students = DB.getAll('Student');
+            const programs = DB.getAll('Program');
+            const tbody = document.querySelector('#students-table tbody');
+            tbody.innerHTML = '';
+
+            const results = students.filter(s => 
+                s.StudentID.toLowerCase().includes(query) ||
+                s.StudentName.toLowerCase().includes(query) ||
+                s.StudentSurname.toLowerCase().includes(query) ||
+                s.StudentEmail.toLowerCase().includes(query)
+            );
+
+            results.forEach(student => {
+                const program = programs.find(p => p.ProgrammeID === student.ProgrammeID);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${student.StudentID}</td>
+                    <td>${student.StudentName} ${student.StudentSurname}</td>
+                    <td>${student.StudentEmail}</td>
+                    <td>${student.StudentContactNumber}</td>
+                    <td>${student.StudentYearOfStudy}</td>
+                    <td>${program ? program.ProgrammeName : 'N/A'}</td>
+                    <td>••••••••</td>
+                    <td>
+                        <button onclick="editStudent('${student.StudentID}')" class="btn btn-sm btn-primary">Edit</button>
+                        <button onclick="deleteStudent('${student.StudentID}')" class="btn btn-sm btn-danger">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function showAddModal() {
+            document.getElementById('modal-title').textContent = 'Add Student';
+            document.getElementById('student-form').reset();
+            document.getElementById('student_id').value = '';
+            document.getElementById('student_id_input').disabled = false;
+            document.getElementById('student_id_input').required = true;
+            document.getElementById('password-group').style.display = 'block';
+            document.getElementById('password').required = true;
+            document.getElementById('student-modal').classList.add('active');
+        }
+
+        function editStudent(id) {
+            const student = DB.getById('Student', id, 'StudentID');
+            if (!student) return;
+
+            document.getElementById('modal-title').textContent = 'Edit Student';
+            document.getElementById('student_id').value = student.StudentID;
+            document.getElementById('student_id_input').value = student.StudentID;
+            document.getElementById('student_id_input').disabled = true;
+            document.getElementById('student_id_input').required = false;
+            document.getElementById('student_name').value = student.StudentName;
+            document.getElementById('student_surname').value = student.StudentSurname;
+            document.getElementById('student_email').value = student.StudentEmail;
+            document.getElementById('student_contact').value = student.StudentContactNumber;
+            document.getElementById('student_year').value = student.StudentYearOfStudy;
+            document.getElementById('program_id').value = student.ProgrammeID;
+            document.getElementById('password-group').style.display = 'block';
+            document.getElementById('password').required = false;
+            document.getElementById('password').placeholder = 'Leave blank to keep current password';
+            document.getElementById('student-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('student-modal').classList.remove('active');
+        }
+
+        function deleteStudent(id) {
+            deleteId = id;
+            document.getElementById('delete-modal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.remove('active');
+            deleteId = null;
+        }
+
+        function confirmDelete() {
+            if (deleteId) {
+                DB.delete('Student', deleteId, 'StudentID');
+                showAlert('Student deleted successfully', 'success');
+                loadStudents();
+                closeDeleteModal();
+            }
+        }
+
+        document.getElementById('student-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const studentId = document.getElementById('student_id').value;
+            const data = {
+                StudentID: document.getElementById('student_id_input').value,
+                StudentName: document.getElementById('student_name').value,
+                StudentSurname: document.getElementById('student_surname').value,
+                StudentEmail: document.getElementById('student_email').value,
+                StudentContactNumber: parseInt(document.getElementById('student_contact').value),
+                StudentYearOfStudy: parseInt(document.getElementById('student_year').value),
+                ProgrammeID: document.getElementById('program_id').value
+            };
+
+            if (studentId) {
+                // Update existing student
+                const password = document.getElementById('password').value;
+                if (password) {
+                    data.PasswordHash = DB.hashPassword(password);
+                }
+                DB.update('Student', studentId, 'StudentID', data);
+                showAlert('Student updated successfully', 'success');
+            } else {
+                // Add new student
+                data.PasswordHash = DB.hashPassword(document.getElementById('password').value);
+                DB.add('Student', data);
+                showAlert('Student added successfully', 'success');
+            }
+
+            closeModal();
+            loadStudents();
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

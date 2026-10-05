@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Tutors - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Admin</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Admin Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="students.html">Students</a>
+                <a href="tutors.html" class="active">Tutors</a>
+                <a href="departments.html">Departments</a>
+                <a href="programs.html">Programs</a>
+                <a href="modules.html">Modules</a>
+                <a href="applications.html">Applications</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="payments.html">Payments</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="../reports/index.html">Reports</a>
+                <a href="database.html">Database Management</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Manage Tutors</h1><p>Add, view, edit, and delete tutors</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="search-bar">
+                        <input type="text" id="search-input" class="form-control" placeholder="Search by name, tutor number, or email...">
+                        <button onclick="searchTutors()" class="btn btn-primary">Search</button>
+                        <button onclick="showAddModal()" class="btn btn-success">Add Tutor</button>
+                        <button onclick="loadTutors()" class="btn btn-secondary">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>All Tutors</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="tutors-table">
+                            <thead>
+                                <tr>
+                                    <th>Tutor ID</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Assigned Modules</th>
+                                    <th>Password Management</th>
+                                    <th>Rating</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="tutor-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add Tutor</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="tutor-form">
+                <input type="hidden" id="tutor_id">
+                <div class="form-group">
+                    <label for="tutor_id_input">Tutor ID</label>
+                    <input type="text" id="tutor_id_input" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tutor_name">Tutor Name</label>
+                        <input type="text" id="tutor_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="tutor_surname">Tutor Surname</label>
+                        <input type="text" id="tutor_surname" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="tutor_email">Email</label>
+                    <input type="email" id="tutor_email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="tutor_year">Year of Study</label>
+                    <input type="number" id="tutor_year" class="form-control" required min="1" max="6">
+                </div>
+                <div class="form-group" id="password-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Assign Modules</label>
+                    <div id="modules-checkboxes" class="modules-checkboxes"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Delete</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body"><p>Are you sure you want to delete this tutor? This action cannot be undone.</p></div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button>
+                <button type="button" onclick="confirmDelete()" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        let deleteId = null;
+        if (!Auth.requireAuth('admin')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadModules();
+            loadTutors();
+        });
+
+        function loadModules() {
+            const modules = DB.getAll('Module');
+            const container = document.getElementById('modules-checkboxes');
+            container.innerHTML = '';
+            modules.forEach(module => {
+                const label = document.createElement('label');
+                label.className = 'checkbox-label';
+                label.innerHTML = `
+                    <input type="checkbox" name="module" value="${module.ModuleCode}">
+                    <span>${module.ModuleCode} - ${module.ModuleName}</span>
+                `;
+                container.appendChild(label);
+            });
+        }
+
+        function loadTutors() {
+            const tutors = DB.getAll('Tutor');
+            const applications = DB.getAll('Application');
+            const tutorModules = DB.getAll('TutorModule');
+            const modules = DB.getAll('Module');
+            const tbody = document.querySelector('#tutors-table tbody');
+            tbody.innerHTML = '';
+
+            // Only show tutors who have approved applications or were manually added
+            const activeTutors = tutors.filter(tutor => {
+                const approvedApp = applications.find(app => app.TutorID === tutor.TutorID && app.ApplicationStatus === 'Approved');
+                return approvedApp || tutor.TutorStatus === 'Active';
+            });
+
+            activeTutors.forEach(tutor => {
+                const rating = DB.getAverageRating(tutor.TutorID);
+                const tModules = tutorModules.filter(tm => tm.TutorID === tutor.TutorID);
+                const moduleNames = tModules.map(tm => modules.find(m => m.ModuleCode === tm.ModuleCode)?.ModuleName || '').filter(Boolean).join(', ');
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${tutor.TutorID}</td>
+                    <td>${tutor.TutorName} ${tutor.TutorSurname}</td>
+                    <td>${tutor.TutorEmail}</td>
+                    <td>${moduleNames || 'No modules assigned'}</td>
+                    <td>
+                        <button onclick="resetPassword('${tutor.TutorID}')" class="btn btn-sm btn-warning">Reset Password</button>
+                    </td>
+                    <td>${rating > 0 ? rating + ' ★' : 'N/A'}</td>
+                    <td>
+                        <button onclick="editTutor('${tutor.TutorID}')" class="btn btn-sm btn-primary">Edit</button>
+                        <button onclick="deleteTutor('${tutor.TutorID}')" class="btn btn-sm btn-danger">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function searchTutors() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const tutors = DB.getAll('Tutor');
+            const applications = DB.getAll('Application');
+            const tutorModules = DB.getAll('TutorModule');
+            const modules = DB.getAll('Module');
+            const tbody = document.querySelector('#tutors-table tbody');
+            tbody.innerHTML = '';
+
+            const results = tutors.filter(t => 
+                t.TutorID.toLowerCase().includes(query) ||
+                t.TutorName.toLowerCase().includes(query) ||
+                t.TutorSurname.toLowerCase().includes(query) ||
+                t.TutorEmail.toLowerCase().includes(query)
+            );
+
+            // Only show tutors who have approved applications or are active
+            const activeTutors = results.filter(tutor => {
+                const approvedApp = applications.find(app => app.TutorID === tutor.TutorID && app.ApplicationStatus === 'Approved');
+                return approvedApp || tutor.TutorStatus === 'Active';
+            });
+
+            activeTutors.forEach(tutor => {
+                const rating = DB.getAverageRating(tutor.TutorID);
+                const tModules = tutorModules.filter(tm => tm.TutorID === tutor.TutorID);
+                const moduleNames = tModules.map(tm => modules.find(m => m.ModuleCode === tm.ModuleCode)?.ModuleName || '').filter(Boolean).join(', ');
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${tutor.TutorID}</td>
+                    <td>${tutor.TutorName} ${tutor.TutorSurname}</td>
+                    <td>${tutor.TutorEmail}</td>
+                    <td>${moduleNames || 'No modules assigned'}</td>
+                    <td>
+                        <button onclick="resetPassword('${tutor.TutorID}')" class="btn btn-sm btn-warning">Reset Password</button>
+                    </td>
+                    <td>${rating > 0 ? rating + ' ★' : 'N/A'}</td>
+                    <td>
+                        <button onclick="editTutor('${tutor.TutorID}')" class="btn btn-sm btn-primary">Edit</button>
+                        <button onclick="deleteTutor('${tutor.TutorID}')" class="btn btn-sm btn-danger">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function showAddModal() {
+            document.getElementById('modal-title').textContent = 'Add Tutor';
+            document.getElementById('tutor-form').reset();
+            document.getElementById('tutor_id').value = '';
+            document.getElementById('tutor_id_input').disabled = false;
+            document.getElementById('tutor_id_input').required = true;
+            document.getElementById('password-group').style.display = 'block';
+            document.getElementById('password').required = true;
+            // Clear module checkboxes
+            document.querySelectorAll('input[name="module"]').forEach(cb => cb.checked = false);
+            document.getElementById('tutor-modal').classList.add('active');
+        }
+
+        function editTutor(id) {
+            const tutor = DB.getById('Tutor', id, 'TutorID');
+            if (!tutor) return;
+            document.getElementById('modal-title').textContent = 'Edit Tutor';
+            document.getElementById('tutor_id').value = tutor.TutorID;
+            document.getElementById('tutor_id_input').value = tutor.TutorID;
+            document.getElementById('tutor_id_input').disabled = true;
+            document.getElementById('tutor_id_input').required = false;
+            document.getElementById('tutor_name').value = tutor.TutorName;
+            document.getElementById('tutor_surname').value = tutor.TutorSurname;
+            document.getElementById('tutor_email').value = tutor.TutorEmail;
+            document.getElementById('tutor_year').value = tutor.TutorYearOfStudy;
+            document.getElementById('password-group').style.display = 'block';
+            document.getElementById('password').required = false;
+            document.getElementById('password').placeholder = 'Leave blank to keep current password';
+            // Load assigned modules
+            const tutorModules = DB.getAll('TutorModule').filter(tm => tm.TutorID === id);
+            document.querySelectorAll('input[name="module"]').forEach(cb => {
+                cb.checked = tutorModules.some(tm => tm.ModuleCode === cb.value);
+            });
+            document.getElementById('tutor-modal').classList.add('active');
+        }
+
+        function resetPassword(id) {
+            const defaultPassword = 'Tutor123';
+            const hashedPassword = DB.hashPassword(defaultPassword);
+            DB.update('Tutor', id, 'TutorID', { PasswordHash: hashedPassword });
+            showAlert(`Password reset to default: ${defaultPassword}`, 'success');
+        }
+
+        function closeModal() { document.getElementById('tutor-modal').classList.remove('active'); }
+        function deleteTutor(id) { deleteId = id; document.getElementById('delete-modal').classList.add('active'); }
+        function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('active'); deleteId = null; }
+        function confirmDelete() {
+            if (deleteId) {
+                DB.delete('Tutor', deleteId, 'TutorID');
+                showAlert('Tutor deleted successfully', 'success');
+                loadTutors();
+                closeDeleteModal();
+            }
+        }
+
+        document.getElementById('tutor-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const tutorId = document.getElementById('tutor_id').value;
+            const newTutorId = document.getElementById('tutor_id_input').value;
+            const data = {
+                TutorID: newTutorId,
+                TutorName: document.getElementById('tutor_name').value,
+                TutorSurname: document.getElementById('tutor_surname').value,
+                TutorEmail: document.getElementById('tutor_email').value,
+                TutorYearOfStudy: parseInt(document.getElementById('tutor_year').value),
+                TutorStatus: 'Active'
+            };
+
+            // Get selected modules
+            const selectedModules = Array.from(document.querySelectorAll('input[name="module"]:checked')).map(cb => cb.value);
+
+            if (tutorId) {
+                // Update existing tutor
+                const password = document.getElementById('password').value;
+                if (password) {
+                    data.PasswordHash = DB.hashPassword(password);
+                }
+                DB.update('Tutor', tutorId, 'TutorID', data);
+                
+                // Update module assignments
+                const existingTutorModules = DB.getAll('TutorModule').filter(tm => tm.TutorID === tutorId);
+                existingTutorModules.forEach(tm => DB.delete('TutorModule', `${tm.TutorID}_${tm.ModuleCode}`, 'TutorID'));
+                selectedModules.forEach(moduleCode => {
+                    DB.add('TutorModule', {
+                        TutorID: tutorId,
+                        ModuleCode: moduleCode,
+                        Semester: 'Semester 1'
+                    });
+                });
+                showAlert('Tutor updated successfully', 'success');
+            } else {
+                // Add new tutor
+                data.PasswordHash = DB.hashPassword(document.getElementById('password').value);
+                DB.add('Tutor', data);
+                
+                // Assign modules to tutor
+                selectedModules.forEach(moduleCode => {
+                    DB.add('TutorModule', {
+                        TutorID: newTutorId,
+                        ModuleCode: moduleCode,
+                        Semester: 'Semester 1'
+                    });
+                });
+                showAlert('Tutor added successfully', 'success');
+            }
+            closeModal();
+            loadTutors();
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

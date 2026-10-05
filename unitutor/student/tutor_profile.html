@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Profile - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Student</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Student Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="find_tutor.html">Find Tutor</a>
+                <a href="bookings.html">My Bookings</a>
+                <a href="sessions.html">My Sessions</a>
+                <a href="feedback.html">My Feedback</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Tutor Profile</h1>
+                <p>View tutor details and expertise</p>
+                <button onclick="window.location.href='find_tutor.html'" class="btn btn-secondary">Back to Find Tutor</button>
+            </div>
+            <div id="alert-container"></div>
+
+            <div id="tutor-profile-content"></div>
+        </main>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('student')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            
+            const tutorId = localStorage.getItem('selected_tutor_id');
+            if (tutorId) {
+                loadTutorProfile(tutorId);
+            } else {
+                window.location.href = 'find_tutor.html';
+            }
+        });
+
+        function loadTutorProfile(tutorId) {
+            const tutor = DB.getById('Tutor', tutorId, 'TutorID');
+            if (!tutor) {
+                document.getElementById('tutor-profile-content').innerHTML = '<p>Tutor not found</p>';
+                return;
+            }
+
+            const tutorModules = DB.getTutorModules(tutorId);
+            const rating = DB.getAverageRating(tutorId);
+            const bookings = DB.getAll('Booking').filter(b => b.TutorID === tutorId);
+            const feedback = DB.getAll('Feedback').filter(f => f.TutorID === tutorId);
+
+            const content = document.getElementById('tutor-profile-content');
+            content.innerHTML = `
+                <div class="card">
+                    <div class="card-body">
+                        <div style="display: flex; align-items: center; gap: 2rem;">
+                            <div style="width: 100px; height: 100px; background: #4a90e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: white; font-weight: bold;">
+                                ${tutor.TutorName[0]}${tutor.TutorSurname[0]}
+                            </div>
+                            <div>
+                                <h2>${tutor.TutorName} ${tutor.TutorSurname}</h2>
+                                <p>${tutor.TutorEmail}</p>
+                                <p><strong>Year of Study:</strong> ${tutor.TutorYearOfStudy}</p>
+                                <p><strong>Status:</strong> ${tutor.TutorStatus}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 1rem;">
+                    <div class="card-header"><h3>Statistics</h3></div>
+                    <div class="card-body">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <div style="text-align: center; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+                                <h3>${bookings.length}</h3>
+                                <p>Sessions Completed</p>
+                            </div>
+                            <div style="text-align: center; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+                                <h3>${rating > 0 ? rating : 'N/A'}</h3>
+                                <p>Average Rating</p>
+                            </div>
+                            <div style="text-align: center; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+                                <h3>${feedback.length}</h3>
+                                <p>Feedback Received</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 1rem;">
+                    <div class="card-header"><h3>Modules & Expertise</h3></div>
+                    <div class="card-body">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Module Code</th>
+                                    <th>Module Name</th>
+                                    <th>Program</th>
+                                    <th>Department</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tutorModules.map(tm => `
+                                    <tr>
+                                        <td>${tm.ModuleCode}</td>
+                                        <td>${tm.ModuleName}</td>
+                                        <td>${tm.ProgrammeName}</td>
+                                        <td>${tm.DepartmentName}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 1rem;">
+                    <div class="card-header"><h3>Recent Feedback</h3></div>
+                    <div class="card-body">
+                        ${feedback.length > 0 ? feedback.slice(0, 5).map(f => `
+                            <div style="padding: 1rem; border-bottom: 1px solid #eee;">
+                                <div style="color: #f59e0b;">${'★'.repeat(f.Rating)}${'☆'.repeat(5 - f.Rating)}</div>
+                                <p>${f.FeedbackComments}</p>
+                                <small>${new Date(f.FeedbackDate).toLocaleDateString()}</small>
+                            </div>
+                        `).join('') : '<p>No feedback yet</p>'}
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <button onclick="openBookingModal('${tutor.TutorID}', '${tutorModules[0]?.ModuleCode}')" class="btn btn-primary btn-lg">Book a Session</button>
+                </div>
+            `;
+        }
+
+        function openBookingModal(tutorId, moduleCode) {
+            localStorage.setItem('booking_tutor_id', tutorId);
+            localStorage.setItem('booking_module_code', moduleCode);
+            window.location.href = 'find_tutor.html';
+        }
+    </script>
+</body>
+</html>

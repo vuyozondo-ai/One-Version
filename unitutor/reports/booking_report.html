@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Report - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Admin</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Admin Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="../admin/dashboard.html">Dashboard</a>
+                <a href="../admin/students.html">Students</a>
+                <a href="../admin/tutors.html">Tutors</a>
+                <a href="../admin/departments.html">Departments</a>
+                <a href="../admin/programs.html">Programs</a>
+                <a href="../admin/modules.html">Modules</a>
+                <a href="../admin/applications.html">Applications</a>
+                <a href="../admin/bookings.html">Bookings</a>
+                <a href="../admin/sessions.html">Sessions</a>
+                <a href="../admin/payments.html">Payments</a>
+                <a href="../admin/feedback.html">Feedback</a>
+                <a href="index.html" class="active">Reports</a>
+                <a href="../admin/database.html">Database Management</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Booking and Session Report</h1>
+                <p>Detailed booking information with filtering options</p>
+                <a href="index.html" class="btn btn-secondary">Back to Reports</a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="filter-bar">
+                        <div class="filter-group">
+                            <label>Date</label>
+                            <input type="date" id="filter-date" class="form-control">
+                        </div>
+                        <div class="filter-group">
+                            <label>Module</label>
+                            <select id="filter-module" class="form-control">
+                                <option value="">All Modules</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Tutor</label>
+                            <select id="filter-tutor" class="form-control">
+                                <option value="">All Tutors</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label>Status</label>
+                            <select id="filter-status" class="form-control">
+                                <option value="">All Statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <button onclick="filterReport()" class="btn btn-primary">Filter</button>
+                        <button onclick="loadReport()" class="btn btn-secondary">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>Booking Report</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="report-table">
+                            <thead>
+                                <tr>
+                                    <th>Booking ID</th>
+                                    <th>Student</th>
+                                    <th>Tutor</th>
+                                    <th>Module</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('admin')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadFilters();
+            loadReport();
+        });
+
+        function loadFilters() {
+            const modules = DB.getAll('Module');
+            const tutors = DB.getAll('Tutor');
+            
+            const moduleSelect = document.getElementById('filter-module');
+            modules.forEach(m => {
+                const option = document.createElement('option');
+                option.value = m.ModuleCode;
+                option.textContent = `${m.ModuleCode} - ${m.ModuleName}`;
+                moduleSelect.appendChild(option);
+            });
+
+            const tutorSelect = document.getElementById('filter-tutor');
+            tutors.forEach(t => {
+                const option = document.createElement('option');
+                option.value = t.TutorID;
+                option.textContent = `${t.TutorName} ${t.TutorSurname}`;
+                tutorSelect.appendChild(option);
+            });
+        }
+
+        function loadReport() {
+            const reportData = DB.getBookingReport({});
+            renderTable(reportData);
+        }
+
+        function filterReport() {
+            const filters = {
+                BookingDate: document.getElementById('filter-date').value,
+                ModuleCode: document.getElementById('filter-module').value || null,
+                TutorID: parseInt(document.getElementById('filter-tutor').value) || null,
+                BookingStatus: document.getElementById('filter-status').value
+            };
+            const reportData = DB.getBookingReport(filters);
+            renderTable(reportData);
+        }
+
+        function renderTable(data) {
+            const tbody = document.querySelector('#report-table tbody');
+            tbody.innerHTML = '';
+
+            data.forEach(booking => {
+                const statusClass = booking.status === 'Confirmed' ? 'badge-success' : 
+                                   booking.status === 'Completed' ? 'badge-info' : 
+                                   booking.status === 'Cancelled' ? 'badge-danger' : 'badge-warning';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${booking.BookingID}</td>
+                    <td>${booking.student_name}</td>
+                    <td>${booking.tutor_name}</td>
+                    <td>${booking.module_name}</td>
+                    <td>${booking.date}</td>
+                    <td>${booking.time}</td>
+                    <td><span class="badge ${statusClass}">${booking.status}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>

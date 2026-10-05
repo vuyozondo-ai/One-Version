@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Modules - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Admin</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Admin Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="students.html">Students</a>
+                <a href="tutors.html">Tutors</a>
+                <a href="departments.html">Departments</a>
+                <a href="programs.html">Programs</a>
+                <a href="modules.html" class="active">Modules</a>
+                <a href="applications.html">Applications</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="payments.html">Payments</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="../reports/index.html">Reports</a>
+                <a href="database.html">Database Management</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Manage Modules</h1><p>Add, view, edit, and delete modules</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="search-bar">
+                        <input type="text" id="search-input" class="form-control" placeholder="Search by module code or name...">
+                        <button onclick="searchModules()" class="btn btn-primary">Search</button>
+                        <button onclick="showAddModal()" class="btn btn-success">Add Module</button>
+                        <button onclick="loadModules()" class="btn btn-secondary">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>All Modules</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="modules-table">
+                            <thead>
+                                <tr>
+                                    <th>Module Code</th>
+                                    <th>Module Name</th>
+                                    <th>Description</th>
+                                    <th>Level</th>
+                                    <th>Credits</th>
+                                    <th>Program</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="module-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add Module</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="module-form">
+                <input type="hidden" id="module_code">
+                <div class="form-group">
+                    <label for="module_code_input">Module Code</label>
+                    <input type="text" id="module_code_input" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="module_name">Module Name</label>
+                    <input type="text" id="module_name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="module_description">Description</label>
+                    <textarea id="module_description" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="module_level">Level</label>
+                        <input type="number" id="module_level" class="form-control" required min="1" max="4">
+                    </div>
+                    <div class="form-group">
+                        <label for="credits">Credits</label>
+                        <input type="number" id="credits" class="form-control" required min="1" max="30">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="program_id">Program</label>
+                    <select id="program_id" class="form-control" required></select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Delete</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body"><p>Are you sure you want to delete this module? This action cannot be undone.</p></div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button>
+                <button type="button" onclick="confirmDelete()" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        let deleteId = null;
+        if (!Auth.requireAuth('admin')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadPrograms();
+            loadModules();
+        });
+
+        function loadPrograms() {
+            const programs = DB.getAll('Program');
+            const select = document.getElementById('program_id');
+            select.innerHTML = '<option value="">Select program</option>';
+            programs.forEach(program => {
+                const option = document.createElement('option');
+                option.value = program.ProgrammeID;
+                option.textContent = program.ProgrammeName;
+                select.appendChild(option);
+            });
+        }
+
+        function loadModules() {
+            const modules = DB.getAll('Module');
+            const programs = DB.getAll('Program');
+            const tbody = document.querySelector('#modules-table tbody');
+            tbody.innerHTML = '';
+
+            modules.forEach(module => {
+                const program = programs.find(p => p.ProgrammeID === module.ProgrammeID);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${module.ModuleCode}</td>
+                    <td>${module.ModuleName}</td>
+                    <td>${module.ModuleDescription || 'N/A'}</td>
+                    <td>${module.ModuleLevel}</td>
+                    <td>${module.Credits}</td>
+                    <td>${program ? program.ProgrammeName : 'N/A'}</td>
+                    <td>
+                        <button onclick="editModule('${module.ModuleCode}')" class="btn btn-sm btn-primary">Edit</button>
+                        <button onclick="deleteModule('${module.ModuleCode}')" class="btn btn-sm btn-danger">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function searchModules() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const modules = DB.getAll('Module');
+            const programs = DB.getAll('Program');
+            const tbody = document.querySelector('#modules-table tbody');
+            tbody.innerHTML = '';
+
+            const filtered = modules.filter(m => 
+                m.ModuleCode.toLowerCase().includes(query) || 
+                m.ModuleName.toLowerCase().includes(query)
+            );
+
+            filtered.forEach(module => {
+                const program = programs.find(p => p.ProgrammeID === module.ProgrammeID);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${module.ModuleCode}</td>
+                    <td>${module.ModuleName}</td>
+                    <td>${module.ModuleDescription || 'N/A'}</td>
+                    <td>${module.ModuleLevel}</td>
+                    <td>${module.Credits}</td>
+                    <td>${program ? program.ProgrammeName : 'N/A'}</td>
+                    <td>
+                        <button onclick="editModule('${module.ModuleCode}')" class="btn btn-sm btn-primary">Edit</button>
+                        <button onclick="deleteModule('${module.ModuleCode}')" class="btn btn-sm btn-danger">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function showAddModal() {
+            document.getElementById('modal-title').textContent = 'Add Module';
+            document.getElementById('module-form').reset();
+            document.getElementById('module_code').value = '';
+            document.getElementById('module-modal').classList.add('active');
+        }
+
+        function editModule(id) {
+            const module = DB.getById('Module', id, 'ModuleCode');
+            if (!module) return;
+            document.getElementById('modal-title').textContent = 'Edit Module';
+            document.getElementById('module_code').value = module.ModuleCode;
+            document.getElementById('module_code_input').value = module.ModuleCode;
+            document.getElementById('module_name').value = module.ModuleName;
+            document.getElementById('module_description').value = module.ModuleDescription || '';
+            document.getElementById('module_level').value = module.ModuleLevel;
+            document.getElementById('credits').value = module.Credits;
+            document.getElementById('program_id').value = module.ProgrammeID;
+            document.getElementById('module-modal').classList.add('active');
+        }
+
+        function closeModal() { document.getElementById('module-modal').classList.remove('active'); }
+        function deleteModule(id) { deleteId = id; document.getElementById('delete-modal').classList.add('active'); }
+        function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('active'); deleteId = null; }
+        function confirmDelete() {
+            if (deleteId) {
+                DB.delete('Module', deleteId, 'ModuleCode');
+                showAlert('Module deleted successfully', 'success');
+                loadModules();
+                closeDeleteModal();
+            }
+        }
+
+        document.getElementById('module-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const moduleCode = document.getElementById('module_code').value;
+            const newModuleCode = document.getElementById('module_code_input').value;
+            const data = {
+                ModuleCode: newModuleCode,
+                ModuleName: document.getElementById('module_name').value,
+                ModuleDescription: document.getElementById('module_description').value,
+                ModuleLevel: parseInt(document.getElementById('module_level').value),
+                Credits: parseInt(document.getElementById('credits').value),
+                ProgrammeID: document.getElementById('program_id').value
+            };
+
+            if (moduleCode) {
+                DB.update('Module', moduleCode, 'ModuleCode', data);
+                showAlert('Module updated successfully', 'success');
+            } else {
+                DB.add('Module', data);
+                // Auto-assign module to all active tutors
+                const tutors = DB.getAll('Tutor').filter(t => t.TutorStatus === 'Active');
+                tutors.forEach(tutor => {
+                    const tutorModules = DB.getAll('TutorModule');
+                    const alreadyAssigned = tutorModules.some(tm => tm.TutorID === tutor.TutorID && tm.ModuleCode === newModuleCode);
+                    if (!alreadyAssigned) {
+                        DB.add('TutorModule', {
+                            TutorID: tutor.TutorID,
+                            ModuleCode: newModuleCode,
+                            Semester: 'Semester 1'
+                        });
+                    }
+                });
+                showAlert('Module added and assigned to all active tutors', 'success');
+            }
+            closeModal();
+            loadModules();
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

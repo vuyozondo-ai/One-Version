@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookings - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Tutor</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Tutor Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="modules.html">My Modules</a>
+                <a href="slots.html">Available Slots</a>
+                <a href="bookings.html" class="active">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Bookings</h1><p>View and manage your tutoring bookings</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="booking-options">
+                        <button onclick="showPrivateBookings()" class="btn btn-primary" id="btn-private">View Private Bookings</button>
+                        <button onclick="showPublicBookings()" class="btn btn-info" id="btn-public-view">View Public Sessions</button>
+                        <button onclick="showPublicBookingForm()" class="btn btn-success" id="btn-public">Make Public Booking</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="private-bookings-section">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="filter-bar">
+                            <div class="filter-group">
+                                <label>Status</label>
+                                <select id="filter-status" class="form-control">
+                                    <option value="">All Statuses</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <button onclick="filterBookings()" class="btn btn-primary">Filter</button>
+                            <button onclick="loadPrivateBookings()" class="btn btn-secondary">Reset</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h2>Private Bookings</h2></div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table id="bookings-table">
+                                <thead>
+                                    <tr>
+                                        <th>Booking ID</th>
+                                        <th>Student</th>
+                                        <th>Module</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="public-bookings-view-section" style="display: none;">
+                <div class="card">
+                    <div class="card-header"><h2>Public Sessions</h2></div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table id="public-sessions-table">
+                                <thead>
+                                    <tr>
+                                        <th>Session ID</th>
+                                        <th>Module</th>
+                                        <th>Normal Slot</th>
+                                        <th>After-Hours Slot</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="public-booking-section" style="display: none;">
+                <div class="card">
+                    <div class="card-header"><h2>Create Public Session</h2></div>
+                    <div class="card-body">
+                        <p>Select a module to create a public tutoring session that students can join.</p>
+                        <div class="form-group">
+                            <label for="module-select">Select Module</label>
+                            <select id="module-select" class="form-control" onchange="loadModuleSlots()">
+                                <option value="">Select a module</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="slots-section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header"><h3>Normal Slots (08:00-17:00)</h3></div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table id="normal-slots-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Select</th>
+                                            <th>Day of Week</th>
+                                            <th>Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h3>After-Hours Slots (17:00-19:00)</h3></div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table id="after-hours-slots-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Select</th>
+                                            <th>Day of Week</th>
+                                            <th>Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h3>Additional Tutors (Optional)</h3></div>
+                        <div class="card-body">
+                            <p>Select additional tutors to co-host this public session:</p>
+                            <div id="additional-tutors-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <button onclick="createPublicSession()" class="btn btn-success">Create Public Session</button>
+                            <button onclick="showPrivateBookings()" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('tutor')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadPrivateBookings();
+            loadTutorModules();
+        });
+
+        function showPrivateBookings() {
+            document.getElementById('private-bookings-section').style.display = 'block';
+            document.getElementById('public-bookings-view-section').style.display = 'none';
+            document.getElementById('public-booking-section').style.display = 'none';
+            document.getElementById('btn-private').classList.add('active');
+            document.getElementById('btn-public-view').classList.remove('active');
+            document.getElementById('btn-public').classList.remove('active');
+            loadPrivateBookings();
+        }
+
+        function showPublicBookings() {
+            document.getElementById('private-bookings-section').style.display = 'none';
+            document.getElementById('public-bookings-view-section').style.display = 'block';
+            document.getElementById('public-booking-section').style.display = 'none';
+            document.getElementById('btn-private').classList.remove('active');
+            document.getElementById('btn-public-view').classList.add('active');
+            document.getElementById('btn-public').classList.remove('active');
+            loadPublicBookings();
+        }
+
+        function showPublicBookingForm() {
+            document.getElementById('private-bookings-section').style.display = 'none';
+            document.getElementById('public-bookings-view-section').style.display = 'none';
+            document.getElementById('public-booking-section').style.display = 'block';
+            document.getElementById('btn-private').classList.remove('active');
+            document.getElementById('btn-public-view').classList.remove('active');
+            document.getElementById('btn-public').classList.add('active');
+            document.getElementById('slots-section').style.display = 'none';
+        }
+
+        function loadPublicBookings() {
+            const user = Auth.getCurrentUser();
+            const publicSessions = DB.getAll('PublicSession').filter(ps => 
+                ps.PrimaryTutorID === user.id || 
+                (ps.AdditionalTutorIDs && ps.AdditionalTutorIDs.includes(user.id))
+            );
+            const modules = DB.getAll('Module');
+            const tbody = document.querySelector('#public-sessions-table tbody');
+            tbody.innerHTML = '';
+
+            publicSessions.forEach(session => {
+                const module = modules.find(m => m.ModuleCode === session.ModuleCode);
+                const statusClass = session.SessionStatus === 'Active' ? 'badge-success' : 'badge-danger';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${session.SessionID}</td>
+                    <td>${module ? module.ModuleName : 'N/A'}</td>
+                    <td>${session.NormalSlot || 'N/A'}</td>
+                    <td>${session.AfterHoursSlot || 'N/A'}</td>
+                    <td><span class="badge ${statusClass}">${session.SessionStatus}</span></td>
+                    <td>
+                        ${session.SessionStatus === 'Active' ? `
+                            <button onclick="cancelPublicSession('${session.SessionID}')" class="btn btn-sm btn-danger">Cancel</button>
+                        ` : '-'}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            if (publicSessions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No public sessions found.</td></tr>';
+            }
+        }
+
+        function cancelPublicSession(sessionId) {
+            if (confirm('Are you sure you want to cancel this public session?')) {
+                DB.update('PublicSession', sessionId, 'SessionID', { SessionStatus: 'Cancelled' });
+                showAlert('Public session cancelled successfully', 'success');
+                loadPublicBookings();
+            }
+        }
+
+        function loadPrivateBookings() {
+            const user = Auth.getCurrentUser();
+            const bookings = DB.getAll('Booking').filter(b => b.TutorID === user.id && b.BookingType === 'Private');
+            const students = DB.getAll('Student');
+            const modules = DB.getAll('Module');
+            const tbody = document.querySelector('#bookings-table tbody');
+            tbody.innerHTML = '';
+
+            bookings.forEach(booking => {
+                const student = students.find(s => s.StudentID === booking.StudentID);
+                const module = modules.find(m => m.ModuleCode === booking.ModuleCode);
+                const statusClass = booking.BookingStatus === 'Confirmed' ? 'badge-success' : 
+                                   booking.BookingStatus === 'Completed' ? 'badge-info' : 
+                                   booking.BookingStatus === 'Cancelled' ? 'badge-danger' : 'badge-warning';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${booking.BookingID}</td>
+                    <td>${student ? student.StudentName + ' ' + student.StudentSurname : 'N/A'}</td>
+                    <td>${module ? module.ModuleName : 'N/A'}</td>
+                    <td>${booking.BookingDate}</td>
+                    <td><span class="badge ${statusClass}">${booking.BookingStatus}</span></td>
+                    <td>
+                        ${booking.BookingStatus === 'Pending' ? `
+                            <button onclick="confirmBooking('${booking.BookingID}')" class="btn btn-sm btn-success">Confirm</button>
+                            <button onclick="rejectBooking('${booking.BookingID}')" class="btn btn-sm btn-danger">Reject</button>
+                        ` : '-'}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function loadTutorModules() {
+            const user = Auth.getCurrentUser();
+            const tutorModules = DB.getTutorModules(user.id);
+            const select = document.getElementById('module-select');
+            select.innerHTML = '<option value="">Select a module</option>';
+            tutorModules.forEach(tm => {
+                const option = document.createElement('option');
+                option.value = tm.ModuleCode;
+                option.textContent = tm.ModuleName;
+                select.appendChild(option);
+            });
+        }
+
+        function loadModuleSlots() {
+            const moduleCode = document.getElementById('module-select').value;
+            if (!moduleCode) {
+                document.getElementById('slots-section').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('slots-section').style.display = 'block';
+            loadNormalSlots();
+            loadAfterHoursSlots();
+            loadAdditionalTutors(moduleCode);
+        }
+
+        function loadAdditionalTutors(moduleCode) {
+            const user = Auth.getCurrentUser();
+            const tutorModules = DB.getAll('TutorModule');
+            const tutors = DB.getAll('Tutor');
+            
+            // Get tutors who teach this module (excluding current tutor)
+            const moduleTutorIds = tutorModules
+                .filter(tm => tm.ModuleCode === moduleCode)
+                .map(tm => tm.TutorID)
+                .filter(tid => tid !== user.id);
+            
+            const availableTutors = tutors.filter(t => moduleTutorIds.includes(t.TutorID) && t.TutorStatus === 'Active');
+            
+            const container = document.getElementById('additional-tutors-list');
+            container.innerHTML = '';
+            
+            if (availableTutors.length === 0) {
+                container.innerHTML = '<p class="text-muted">No additional tutors available for this module.</p>';
+                return;
+            }
+            
+            availableTutors.forEach(tutor => {
+                const div = document.createElement('div');
+                div.className = 'form-group';
+                div.innerHTML = `
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="additional-tutor" value="${tutor.TutorID}">
+                        ${tutor.TutorName} ${tutor.TutorSurname} (${tutor.TutorID})
+                    </label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function loadNormalSlots() {
+            const freeSlots = DB.getAll('FreeSlot_Availability');
+            const publicSessions = DB.getAll('PublicSession');
+            const moduleCode = document.getElementById('module-select').value;
+            
+            // Filter for normal hours (08:00-17:00)
+            const normalSlots = freeSlots.filter(slot => {
+                const hour = parseInt(slot.StartTime.split(':')[0]);
+                return hour >= 8 && hour < 17;
+            });
+            
+            // Filter out slots already booked for public sessions for this module
+            const availableSlots = normalSlots.filter(slot => {
+                const isBooked = publicSessions.some(ps => 
+                    ps.ModuleCode === moduleCode &&
+                    ps.SessionStatus === 'Active' &&
+                    ps.NormalSlot &&
+                    ps.NormalSlot.includes(slot.DayOfWeek) &&
+                    ps.NormalSlot.includes(slot.StartTime)
+                );
+                return !isBooked;
+            });
+            
+            const tbody = document.querySelector('#normal-slots-table tbody');
+            tbody.innerHTML = '';
+
+            availableSlots.forEach(slot => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="radio" name="normal-slot" value="${slot.DayOfWeek}|${slot.StartTime}-${slot.EndTime}"></td>
+                    <td>${slot.DayOfWeek}</td>
+                    <td>${slot.StartTime} - ${slot.EndTime}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function loadAfterHoursSlots() {
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+            const times = ['17:00-18:00', '18:00-19:00'];
+            const tbody = document.querySelector('#after-hours-slots-table tbody');
+            tbody.innerHTML = '';
+
+            days.forEach(day => {
+                times.forEach(time => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><input type="radio" name="after-hours-slot" value="${day}|${time}"></td>
+                        <td>${day}</td>
+                        <td>${time}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+        }
+
+        function createPublicSession() {
+            const moduleCode = document.getElementById('module-select').value;
+            const normalSlot = document.querySelector('input[name="normal-slot"]:checked');
+            const afterHoursSlot = document.querySelector('input[name="after-hours-slot"]:checked');
+            const additionalTutorCheckboxes = document.querySelectorAll('input[name="additional-tutor"]:checked');
+            const additionalTutors = Array.from(additionalTutorCheckboxes).map(cb => cb.value);
+
+            if (!moduleCode) {
+                showAlert('Please select a module', 'danger');
+                return;
+            }
+
+            if (!normalSlot && !afterHoursSlot) {
+                showAlert('Please select at least one slot', 'danger');
+                return;
+            }
+
+            // Validate that slots are not on the same day
+            if (normalSlot && afterHoursSlot) {
+                const normalDay = normalSlot.value.split('|')[0];
+                const afterHoursDay = afterHoursSlot.value.split('|')[0];
+                if (normalDay === afterHoursDay) {
+                    showAlert('Cannot select both slots on the same day', 'danger');
+                    return;
+                }
+            }
+
+            // Create public session with database conflict checking
+            const user = Auth.getCurrentUser();
+            const sessionData = {
+                ModuleCode: moduleCode,
+                TutorID: user.id,
+                NormalSlot: normalSlot ? normalSlot.value : null,
+                AfterHoursSlot: afterHoursSlot ? afterHoursSlot.value : null,
+                AdditionalTutors: additionalTutors
+            };
+
+            const result = DB.createPublicSession(sessionData);
+            
+            if (result.success) {
+                const additionalTutorNames = additionalTutors.length > 0 ? ` with ${additionalTutors.length} additional tutor(s)` : '';
+                showAlert(`Public session created successfully! Session ID: ${result.session.SessionID}${additionalTutorNames}`, 'success');
+                showPrivateBookings();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        }
+
+        function filterBookings() {
+            const user = Auth.getCurrentUser();
+            const status = document.getElementById('filter-status').value;
+            let bookings = DB.getAll('Booking').filter(b => b.TutorID === user.id && b.BookingType === 'Private');
+            
+            if (status) {
+                bookings = bookings.filter(b => b.BookingStatus === status);
+            }
+
+            const students = DB.getAll('Student');
+            const modules = DB.getAll('Module');
+            const tbody = document.querySelector('#bookings-table tbody');
+            tbody.innerHTML = '';
+
+            bookings.forEach(booking => {
+                const student = students.find(s => s.StudentID === booking.StudentID);
+                const module = modules.find(m => m.ModuleCode === booking.ModuleCode);
+                const statusClass = booking.BookingStatus === 'Confirmed' ? 'badge-success' : 
+                                   booking.BookingStatus === 'Completed' ? 'badge-info' : 
+                                   booking.BookingStatus === 'Cancelled' ? 'badge-danger' : 'badge-warning';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${booking.BookingID}</td>
+                    <td>${student ? student.StudentName + ' ' + student.StudentSurname : 'N/A'}</td>
+                    <td>${module ? module.ModuleName : 'N/A'}</td>
+                    <td>${booking.BookingDate}</td>
+                    <td><span class="badge ${statusClass}">${booking.BookingStatus}</span></td>
+                    <td>
+                        ${booking.BookingStatus === 'Pending' ? `
+                            <button onclick="confirmBooking('${booking.BookingID}')" class="btn btn-sm btn-success">Confirm</button>
+                            <button onclick="rejectBooking('${booking.BookingID}')" class="btn btn-sm btn-danger">Reject</button>
+                        ` : '-'}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function confirmBooking(bookingId) {
+            const result = DB.confirmBooking(bookingId);
+            if (result.success) {
+                showAlert('Booking confirmed successfully!', 'success');
+                loadBookings();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        }
+
+        function rejectBooking(bookingId) {
+            DB.update('Booking', bookingId, 'BookingID', { BookingStatus: 'Cancelled' });
+            showAlert('Booking rejected', 'warning');
+            loadBookings();
+        }
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Slots - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Tutor</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Tutor Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="modules.html">My Modules</a>
+                <a href="slots.html" class="active">Available Slots</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Available Slots</h1><p>Manage your availability for tutoring sessions</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-body">
+                    <button onclick="showAddModal()" class="btn btn-success">Add Available Slot</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="slot-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add Available Slot</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="slot-form">
+                <input type="hidden" id="slot_id">
+                <div class="form-group" id="slot-id-group">
+                    <label for="slot_id_input">Slot ID</label>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-weight: bold; font-size: 1.1rem;">ST</span>
+                        <input type="text" id="slot_id_input" class="form-control" required pattern="[0-9]{3}" maxlength="3" title="Enter 3 digits" style="width: 100px;">
+                    </div>
+                    <small class="text-muted">Enter 3 digits to complete the Slot ID (STXXX)</small>
+                </div>
+                <div class="form-group">
+                    <label for="slot_date">Date</label>
+                    <input type="date" id="slot_date" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="start_time">Start Time</label>
+                        <input type="time" id="start_time" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="end_time">End Time</label>
+                        <input type="time" id="end_time" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="module_code">Module</label>
+                    <select id="module_code" class="form-control" required></select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+        if (!Auth.requireAuth('tutor')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadModules();
+        });
+
+        function loadModules() {
+            const user = Auth.getCurrentUser();
+            const tutorModules = DB.getTutorModules(user.id);
+            const select = document.getElementById('module_code');
+            select.innerHTML = '<option value="">Select module</option>';
+            
+            tutorModules.forEach(tm => {
+                const option = document.createElement('option');
+                option.value = tm.ModuleCode;
+                option.textContent = `${tm.ModuleCode} - ${tm.ModuleName}`;
+                select.appendChild(option);
+            });
+        }
+
+        function showAddModal() {
+            document.getElementById('modal-title').textContent = 'Add Available Slot';
+            document.getElementById('slot-form').reset();
+            document.getElementById('slot_id').value = '';
+            document.getElementById('slot_id_input').value = '';
+            document.getElementById('slot_id_input').disabled = false;
+            document.getElementById('slot_id_input').required = true;
+            document.getElementById('slot-modal').classList.add('active');
+        }
+
+        function closeModal() { document.getElementById('slot-modal').classList.remove('active'); }
+
+        document.getElementById('slot-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = Auth.getCurrentUser();
+            const slotIdDigits = document.getElementById('slot_id_input').value;
+            
+            // Validate 3 digits
+            if (!/^[0-9]{3}$/.test(slotIdDigits)) {
+                showAlert('Slot ID must be exactly 3 digits', 'danger');
+                return;
+            }
+            
+            const slotId = 'ST' + slotIdDigits;
+            
+            // Check for uniqueness
+            const existingSlots = DB.getAll('AvailableSlot');
+            if (existingSlots.some(slot => slot.SlotID === slotId)) {
+                showAlert('Slot ID already exists. Please use a different ID.', 'danger');
+                return;
+            }
+            
+            const data = {
+                SlotID: slotId,
+                TutorID: user.id,
+                ModuleCode: document.getElementById('module_code').value,
+                SlotDate: document.getElementById('slot_date').value,
+                StartTime: document.getElementById('start_time').value,
+                EndTime: document.getElementById('end_time').value,
+                SlotStatus: 'Available'
+            };
+
+            DB.add('AvailableSlot', data);
+            showAlert('Available slot added successfully', 'success');
+            closeModal();
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

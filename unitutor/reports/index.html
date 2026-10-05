@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Admin</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Admin Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="../admin/dashboard.html">Dashboard</a>
+                <a href="../admin/students.html">Students</a>
+                <a href="../admin/tutors.html">Tutors</a>
+                <a href="../admin/departments.html">Departments</a>
+                <a href="../admin/programs.html">Programs</a>
+                <a href="../admin/modules.html">Modules</a>
+                <a href="../admin/applications.html">Applications</a>
+                <a href="../admin/bookings.html">Bookings</a>
+                <a href="../admin/sessions.html">Sessions</a>
+                <a href="../admin/payments.html">Payments</a>
+                <a href="../admin/feedback.html">Feedback</a>
+                <a href="index.html" class="active">Reports</a>
+                <a href="../admin/database.html">Database Management</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Reports</h1><p>View system analytics and reports</p></div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3><a href="student_activity.html" style="text-decoration: none; color: inherit;">View</a></h3>
+                    <p>Student Activity Report</p>
+                </div>
+                <div class="stat-card">
+                    <h3><a href="tutor_performance.html" style="text-decoration: none; color: inherit;">View</a></h3>
+                    <p>Tutor Performance Report</p>
+                </div>
+                <div class="stat-card">
+                    <h3><a href="module_demand.html" style="text-decoration: none; color: inherit;">View</a></h3>
+                    <p>Module Demand Report</p>
+                </div>
+                <div class="stat-card">
+                    <h3><a href="booking_report.html" style="text-decoration: none; color: inherit;">View</a></h3>
+                    <p>Booking and Session Report</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>Available Reports</h2></div>
+                <div class="card-body">
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                            <h3>1. Student Tutoring Activity Report</h3>
+                            <p style="color: var(--text-muted);">Shows student booking statistics, completed sessions, and cancellations.</p>
+                            <a href="student_activity.html" class="btn btn-primary btn-sm">View Report</a>
+                        </li>
+                        <li style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                            <h3>2. Tutor Performance Report</h3>
+                            <p style="color: var(--text-muted);">Shows tutor session statistics, completion rates, average ratings, and students helped.</p>
+                            <a href="tutor_performance.html" class="btn btn-primary btn-sm">View Report</a>
+                        </li>
+                        <li style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                            <h3>3. Module Demand Report</h3>
+                            <p style="color: var(--text-muted);">Shows which modules have the highest demand based on bookings and sessions.</p>
+                            <a href="module_demand.html" class="btn btn-primary btn-sm">View Report</a>
+                        </li>
+                        <li style="padding: 1rem;">
+                            <h3>4. Booking and Session Report</h3>
+                            <p style="color: var(--text-muted);">Shows detailed booking information with filtering options by date, module, tutor, and status.</p>
+                            <a href="booking_report.html" class="btn btn-primary btn-sm">View Report</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('admin')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+        });
+    </script>
+</body>
+</html>

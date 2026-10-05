@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Student</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Student Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="active">Dashboard</a>
+                <a href="find_tutor.html">Find Tutor</a>
+                <a href="bookings.html">My Bookings</a>
+                <a href="sessions.html">My Sessions</a>
+                <a href="feedback.html">My Feedback</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Student Dashboard</h1><p>Overview of your tutoring activities</p></div>
+            <div id="alert-container"></div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3 id="stat-bookings">0</h3>
+                    <p>My Bookings</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-upcoming">0</h3>
+                    <p>Upcoming Sessions</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-completed">0</h3>
+                    <p>Completed Sessions</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-rating">0</h3>
+                    <p>Average Rating Given</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>Recent Bookings</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="recent-bookings-table">
+                            <thead>
+                                <tr>
+                                    <th>Booking ID</th>
+                                    <th>Tutor</th>
+                                    <th>Module</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('student')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadDashboard();
+        });
+
+        function loadDashboard() {
+            const user = Auth.getCurrentUser();
+            const bookings = DB.getAll('Booking').filter(b => b.StudentID === user.id);
+            const tutorials = DB.getAll('Tutorial');
+            const feedback = DB.getAll('Feedback').filter(f => f.StudentID === user.id);
+            const tutors = DB.getAll('Tutor');
+            const modules = DB.getAll('Module');
+
+            // Statistics
+            document.getElementById('stat-bookings').textContent = bookings.length;
+            
+            const upcomingSessions = tutorials.filter(s => 
+                bookings.some(b => b.BookingID === s.BookingID) && s.TutorialStatus === 'Scheduled'
+            );
+            document.getElementById('stat-upcoming').textContent = upcomingSessions.length;
+
+            const completedSessions = tutorials.filter(s => 
+                bookings.some(b => b.BookingID === s.BookingID) && s.TutorialStatus === 'Completed'
+            );
+            document.getElementById('stat-completed').textContent = completedSessions.length;
+
+            const avgRating = feedback.length > 0 
+                ? (feedback.reduce((sum, f) => sum + f.Rating, 0) / feedback.length).toFixed(1)
+                : 'N/A';
+            document.getElementById('stat-rating').textContent = avgRating;
+
+            // Recent bookings
+            const recentBookings = bookings.slice(-5).reverse();
+            const tbody = document.querySelector('#recent-bookings-table tbody');
+            tbody.innerHTML = '';
+
+            recentBookings.forEach(booking => {
+                const tutor = tutors.find(t => t.TutorID === booking.TutorID);
+                const module = modules.find(m => m.ModuleCode === booking.ModuleCode);
+                const statusClass = booking.BookingStatus === 'Confirmed' ? 'badge-success' : 
+                                   booking.BookingStatus === 'Completed' ? 'badge-info' : 
+                                   booking.BookingStatus === 'Cancelled' ? 'badge-danger' : 'badge-warning';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${booking.BookingID}</td>
+                    <td>${tutor ? tutor.TutorName + ' ' + tutor.TutorSurname : 'N/A'}</td>
+                    <td>${module ? module.ModuleName : 'N/A'}</td>
+                    <td>${booking.BookingDate}</td>
+                    <td><span class="badge ${statusClass}">${booking.BookingStatus}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>

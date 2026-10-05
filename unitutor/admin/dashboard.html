@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="../index.html">
+                    <h1>UniTutor</h1>
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Admin</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Dashboard Layout -->
+    <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Admin Panel</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="active">Dashboard</a>
+                <a href="students.html">Students</a>
+                <a href="tutors.html">Tutors</a>
+                <a href="departments.html">Departments</a>
+                <a href="programs.html">Programs</a>
+                <a href="modules.html">Modules</a>
+                <a href="applications.html">Applications</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="payments.html">Payments</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="../reports/index.html">Reports</a>
+                <a href="database.html">Database Management</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Admin Dashboard</h1>
+                <p>Overview of the UniTutor system</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <!-- Statistics -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3 id="stat-students">0</h3>
+                    <p>Total Students</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-tutors">0</h3>
+                    <p>Total Tutors</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-departments">0</h3>
+                    <p>Total Departments</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-programs">0</h3>
+                    <p>Total Programs</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-modules">0</h3>
+                    <p>Total Modules</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-bookings">0</h3>
+                    <p>Total Bookings</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-sessions">0</h3>
+                    <p>Total Sessions</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-payments">0</h3>
+                    <p>Total Payments</p>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Recent Bookings</h2>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="recent-bookings-table">
+                            <thead>
+                                <tr>
+                                    <th>Booking ID</th>
+                                    <th>Student</th>
+                                    <th>Tutor</th>
+                                    <th>Module</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        // Check authentication
+        if (!Auth.requireAuth('admin')) {
+            window.location.href = '../login.html';
+        }
+
+        // Load dashboard data
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+
+            // Load statistics
+            document.getElementById('stat-students').textContent = DB.getCount('Student');
+            document.getElementById('stat-tutors').textContent = DB.getCount('Tutor');
+            document.getElementById('stat-departments').textContent = DB.getCount('Department');
+            document.getElementById('stat-programs').textContent = DB.getCount('Program');
+            document.getElementById('stat-modules').textContent = DB.getCount('Module');
+            document.getElementById('stat-bookings').textContent = DB.getCount('Booking');
+            document.getElementById('stat-sessions').textContent = DB.getCount('Tutorial');
+            document.getElementById('stat-payments').textContent = DB.getCount('Payment');
+
+            // Load recent bookings
+            const bookings = DB.getAll('Booking').slice(-5).reverse();
+            const students = DB.getAll('Student');
+            const tutors = DB.getAll('Tutor');
+            const modules = DB.getAll('Module');
+
+            const tbody = document.querySelector('#recent-bookings-table tbody');
+            bookings.forEach(booking => {
+                const student = students.find(s => s.StudentID === booking.StudentID);
+                const tutor = tutors.find(t => t.TutorID === booking.TutorID);
+                const module = modules.find(m => m.ModuleCode === booking.ModuleCode);
+
+                const statusClass = booking.BookingStatus === 'Confirmed' ? 'badge-success' : 
+                                   booking.BookingStatus === 'Completed' ? 'badge-info' : 
+                                   booking.BookingStatus === 'Cancelled' ? 'badge-danger' : 'badge-warning';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${booking.BookingID}</td>
+                    <td>${student ? student.StudentName + ' ' + student.StudentSurname : 'N/A'}</td>
+                    <td>${tutor ? tutor.TutorName + ' ' + tutor.TutorSurname : 'N/A'}</td>
+                    <td>${module ? module.ModuleName : 'N/A'}</td>
+                    <td>${booking.BookingDate}</td>
+                    <td><span class="badge ${statusClass}">${booking.BookingStatus}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        });
+    </script>
+</body>
+</html>

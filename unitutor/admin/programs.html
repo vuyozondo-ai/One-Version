@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Programs - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Admin</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Admin Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="students.html">Students</a>
+                <a href="tutors.html">Tutors</a>
+                <a href="departments.html">Departments</a>
+                <a href="programs.html" class="active">Programs</a>
+                <a href="modules.html">Modules</a>
+                <a href="applications.html">Applications</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="payments.html">Payments</a>
+                <a href="feedback.html">Feedback</a>
+                <a href="../reports/index.html">Reports</a>
+                <a href="database.html">Database Management</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Manage Programs</h1><p>Add, view, edit, and delete programs</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-body">
+                    <button onclick="showAddModal()" class="btn btn-success">Add Program</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>All Programs</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="programs-table">
+                            <thead>
+                                <tr>
+                                    <th>Program ID</th>
+                                    <th>Program Name</th>
+                                    <th>Level</th>
+                                    <th>Duration (Years)</th>
+                                    <th>Department</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="program-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Add Program</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="program-form">
+                <input type="hidden" id="program_id">
+                <div class="form-group">
+                    <label for="program_id_input">Program ID</label>
+                    <input type="text" id="program_id_input" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="program_name">Program Name</label>
+                    <input type="text" id="program_name" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="nqf_level">NQF Level</label>
+                        <select id="nqf_level" class="form-control" required>
+                            <option value="">Select NQF Level</option>
+                            <option value="5">Level 5 - Higher Certificate (1 year)</option>
+                            <option value="6">Level 6 - Diploma / Advanced Certificate (2-3 years)</option>
+                            <option value="7">Level 7 - Bachelor's Degree / Advanced Diploma</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="duration">Duration (Years)</label>
+                        <input type="number" id="duration" class="form-control" required min="1" max="6">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="department_id">Department</label>
+                    <select id="department_id" class="form-control" required></select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="delete-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirm Delete</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body"><p>Are you sure you want to delete this program? This action cannot be undone.</p></div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button>
+                <button type="button" onclick="confirmDelete()" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        let deleteId = null;
+        if (!Auth.requireAuth('admin')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadDepartments();
+            loadPrograms();
+        });
+
+        function loadDepartments() {
+            const departments = DB.getAll('Department');
+            const select = document.getElementById('department_id');
+            select.innerHTML = '<option value="">Select department</option>';
+            departments.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept.DepartmentID;
+                option.textContent = dept.DepartmentName;
+                select.appendChild(option);
+            });
+        }
+
+        function loadPrograms() {
+            const programs = DB.getAll('Program');
+            const departments = DB.getAll('Department');
+            const tbody = document.querySelector('#programs-table tbody');
+            tbody.innerHTML = '';
+
+            programs.forEach(program => {
+                const dept = departments.find(d => d.DepartmentID === program.DepartmentID);
+                const nqfLevelText = program.NQFLevel === 5 ? 'Level 5 - Higher Certificate' : 
+                                   program.NQFLevel === 6 ? 'Level 6 - Diploma' : 
+                                   program.NQFLevel === 7 ? 'Level 7 - Bachelor\'s Degree' : 'N/A';
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${program.ProgrammeID}</td>
+                    <td>${program.ProgrammeName}</td>
+                    <td>${nqfLevelText}</td>
+                    <td>${program.Duration}</td>
+                    <td>${dept ? dept.DepartmentName : 'N/A'}</td>
+                    <td>
+                        <button onclick="editProgram('${program.ProgrammeID}')" class="btn btn-sm btn-primary">Edit</button>
+                        <button onclick="deleteProgram('${program.ProgrammeID}')" class="btn btn-sm btn-danger">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function showAddModal() {
+            document.getElementById('modal-title').textContent = 'Add Program';
+            document.getElementById('program-form').reset();
+            document.getElementById('program_id').value = '';
+            document.getElementById('program-modal').classList.add('active');
+        }
+
+        function editProgram(id) {
+            const program = DB.getById('Program', id, 'ProgrammeID');
+            if (!program) return;
+            document.getElementById('modal-title').textContent = 'Edit Program';
+            document.getElementById('program_id').value = program.ProgrammeID;
+            document.getElementById('program_id_input').value = program.ProgrammeID;
+            document.getElementById('program_name').value = program.ProgrammeName;
+            document.getElementById('nqf_level').value = program.NQFLevel;
+            document.getElementById('duration').value = program.Duration;
+            document.getElementById('department_id').value = program.DepartmentID;
+            document.getElementById('program-modal').classList.add('active');
+        }
+
+        function closeModal() { document.getElementById('program-modal').classList.remove('active'); }
+        function deleteProgram(id) { deleteId = id; document.getElementById('delete-modal').classList.add('active'); }
+        function closeDeleteModal() { document.getElementById('delete-modal').classList.remove('active'); deleteId = null; }
+        function confirmDelete() {
+            if (deleteId) {
+                DB.delete('Program', deleteId, 'ProgrammeID');
+                showAlert('Program deleted successfully', 'success');
+                loadPrograms();
+                closeDeleteModal();
+            }
+        }
+
+        document.getElementById('program-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const programId = document.getElementById('program_id').value;
+            const data = {
+                ProgrammeID: document.getElementById('program_id_input').value,
+                ProgrammeName: document.getElementById('program_name').value,
+                NQFLevel: parseInt(document.getElementById('nqf_level').value),
+                Duration: parseInt(document.getElementById('duration').value),
+                DepartmentID: document.getElementById('department_id').value
+            };
+
+            if (programId) {
+                DB.update('Program', programId, 'ProgrammeID', data);
+                showAlert('Program updated successfully', 'success');
+            } else {
+                DB.add('Program', data);
+                showAlert('Program added successfully', 'success');
+            }
+            closeModal();
+            loadPrograms();
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

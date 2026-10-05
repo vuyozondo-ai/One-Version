@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Tutor - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Student</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Student Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="find_tutor.html" class="active">Find Tutor</a>
+                <a href="bookings.html">My Bookings</a>
+                <a href="sessions.html">My Sessions</a>
+                <a href="feedback.html">My Feedback</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Find a Tutor</h1><p>Search for available peer tutors by module</p></div>
+            <div id="alert-container"></div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="search-bar">
+                        <select id="filter-module" class="form-control">
+                            <option value="">All Modules</option>
+                        </select>
+                        <select id="filter-department" class="form-control">
+                            <option value="">All Departments</option>
+                        </select>
+                        <input type="text" id="search-input" class="form-control" placeholder="Search by tutor name...">
+                        <button onclick="searchTutors()" class="btn btn-primary">Search</button>
+                        <button onclick="loadTutors()" class="btn btn-secondary">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tutor-grid" id="tutor-grid"></div>
+        </main>
+    </div>
+
+    <div id="booking-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Book a Session</h2>
+                <button class="modal-close" onclick="closeBookingModal()">&times;</button>
+            </div>
+            <form id="booking-form">
+                <input type="hidden" id="tutor_id">
+                <input type="hidden" id="module_code">
+                <div class="form-group">
+                    <label>Tutor</label>
+                    <input type="text" id="tutor-name" class="form-control" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Module</label>
+                    <input type="text" id="module-name" class="form-control" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="slot_id">Available Slot</label>
+                    <select id="slot_id" class="form-control" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="reason">Reason for Tutoring</label>
+                    <textarea id="reason" class="form-control" required placeholder="Briefly describe what you need help with..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="closeBookingModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Book Session</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('student')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadFilters();
+            loadTutors();
+        });
+
+        function loadFilters() {
+            const modules = DB.getAll('Module');
+            const programs = DB.getAll('Program');
+            const departments = DB.getAll('Department');
+
+            const moduleSelect = document.getElementById('filter-module');
+            modules.forEach(m => {
+                const option = document.createElement('option');
+                option.value = m.ModuleCode;
+                option.textContent = `${m.ModuleCode} - ${m.ModuleName}`;
+                moduleSelect.appendChild(option);
+            });
+
+            const deptSelect = document.getElementById('filter-department');
+            departments.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d.DepartmentID;
+                option.textContent = d.DepartmentName;
+                deptSelect.appendChild(option);
+            });
+        }
+
+        function loadTutors() {
+            const tutors = DB.getAll('Tutor');
+            const tutorModules = DB.getAll('TutorModule');
+            const modules = DB.getAll('Module');
+            const programs = DB.getAll('Program');
+            const departments = DB.getAll('Department');
+            const grid = document.getElementById('tutor-grid');
+            grid.innerHTML = '';
+
+            tutors.forEach(tutor => {
+                if (tutor.TutorStatus !== 'Active') return;
+
+                const tModules = tutorModules.filter(tm => tm.TutorID === tutor.TutorID);
+                const moduleDetails = tModules.map(tm => {
+                    const module = modules.find(m => m.ModuleCode === tm.ModuleCode);
+                    const program = programs.find(p => p.ProgrammeID === module?.ProgrammeID);
+                    const department = departments.find(d => d.DepartmentID === program?.DepartmentID);
+                    return {
+                        ...module,
+                        program_name: program?.ProgrammeName,
+                        department_name: department?.DepartmentName,
+                        proficiency: tm.ProficiencyLevel
+                    };
+                });
+
+                const rating = DB.getAverageRating(tutor.TutorID);
+                const bookings = DB.getAll('Booking').filter(b => b.TutorID === tutor.TutorID);
+
+                const card = document.createElement('div');
+                card.className = 'tutor-card';
+                card.innerHTML = `
+                    <div class="tutor-card-header">
+                        <div class="tutor-avatar">${tutor.TutorName[0]}${tutor.TutorSurname[0]}</div>
+                        <div class="tutor-info">
+                            <h3>${tutor.TutorName} ${tutor.TutorSurname}</h3>
+                            <p>${tutor.TutorEmail}</p>
+                        </div>
+                    </div>
+                    <div class="tutor-card-body">
+                        <p><strong>Department:</strong> ${moduleDetails[0]?.department_name || 'N/A'}</p>
+                        <p><strong>Experience:</strong> ${bookings.length} sessions</p>
+                        <div class="tutor-rating">
+                            <span class="stars">${'★'.repeat(Math.round(rating))}${'☆'.repeat(5 - Math.round(rating))}</span>
+                            <span>${rating > 0 ? rating : 'New'}</span>
+                        </div>
+                        <div class="tutor-modules">
+                            ${moduleDetails.slice(0, 3).map(m => `<span class="module-tag">${m.ModuleCode}</span>`).join('')}
+                            ${moduleDetails.length > 3 ? `<span class="module-tag">+${moduleDetails.length - 3} more</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="tutor-card-footer">
+                        <button onclick="viewTutorProfile('${tutor.TutorID}')" class="btn btn-primary btn-sm">View Profile</button>
+                        <button onclick="openBookingModal('${tutor.TutorID}', '${moduleDetails[0]?.ModuleCode || ''}')" class="btn btn-success btn-sm">Book Session</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function searchTutors() {
+            const moduleId = document.getElementById('filter-module').value;
+            const deptId = document.getElementById('filter-department').value;
+            const searchQuery = document.getElementById('search-input').value.toLowerCase();
+
+            const tutors = DB.getAll('Tutor');
+            const tutorModules = DB.getAll('TutorModule');
+            const modules = DB.getAll('Module');
+            const programs = DB.getAll('Program');
+            const departments = DB.getAll('Department');
+            const grid = document.getElementById('tutor-grid');
+            grid.innerHTML = '';
+
+            tutors.forEach(tutor => {
+                if (tutor.TutorStatus !== 'Active') return;
+
+                const tModules = tutorModules.filter(tm => tm.TutorID === tutor.TutorID);
+                const moduleDetails = tModules.map(tm => {
+                    const module = modules.find(m => m.ModuleCode === tm.ModuleCode);
+                    const program = programs.find(p => p.ProgrammeID === module?.ProgrammeID);
+                    const department = departments.find(d => d.DepartmentID === program?.DepartmentID);
+                    return {
+                        ...module,
+                        program_name: program?.ProgrammeName,
+                        department_name: department?.DepartmentName,
+                        proficiency: tm.ProficiencyLevel
+                    };
+                });
+
+                // Apply filters
+                if (moduleId && !moduleDetails.some(m => m.ModuleCode == moduleId)) return;
+                if (deptId && !moduleDetails.some(m => m.department_id == deptId)) return;
+                if (searchQuery && !tutor.TutorName.toLowerCase().includes(searchQuery) && 
+                    !tutor.TutorSurname.toLowerCase().includes(searchQuery)) return;
+
+                const rating = DB.getAverageRating(tutor.TutorID);
+                const bookings = DB.getAll('Booking').filter(b => b.TutorID === tutor.TutorID);
+
+                const card = document.createElement('div');
+                card.className = 'tutor-card';
+                card.innerHTML = `
+                    <div class="tutor-card-header">
+                        <div class="tutor-avatar">${tutor.TutorName[0]}${tutor.TutorSurname[0]}</div>
+                        <div class="tutor-info">
+                            <h3>${tutor.TutorName} ${tutor.TutorSurname}</h3>
+                            <p>${tutor.TutorEmail}</p>
+                        </div>
+                    </div>
+                    <div class="tutor-card-body">
+                        <p><strong>Department:</strong> ${moduleDetails[0]?.department_name || 'N/A'}</p>
+                        <p><strong>Experience:</strong> ${bookings.length} sessions</p>
+                        <div class="tutor-rating">
+                            <span class="stars">${'★'.repeat(Math.round(rating))}${'☆'.repeat(5 - Math.round(rating))}</span>
+                            <span>${rating > 0 ? rating : 'New'}</span>
+                        </div>
+                        <div class="tutor-modules">
+                            ${moduleDetails.slice(0, 3).map(m => `<span class="module-tag">${m.ModuleCode}</span>`).join('')}
+                            ${moduleDetails.length > 3 ? `<span class="module-tag">+${moduleDetails.length - 3} more</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="tutor-card-footer">
+                        <button onclick="viewTutorProfile('${tutor.TutorID}')" class="btn btn-primary btn-sm">View Profile</button>
+                        <button onclick="openBookingModal('${tutor.TutorID}', '${moduleDetails[0]?.ModuleCode || ''}')" class="btn btn-success btn-sm">Book Session</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function viewTutorProfile(tutorId) {
+            localStorage.setItem('selected_tutor_id', tutorId);
+            window.location.href = 'tutor_profile.html';
+        }
+
+        function openBookingModal(tutorId, moduleCode) {
+            const tutor = DB.getById('Tutor', tutorId, 'TutorID');
+            const module = DB.getById('Module', moduleCode, 'ModuleCode');
+            
+            document.getElementById('tutor_id').value = tutorId;
+            document.getElementById('module_code').value = moduleCode;
+            document.getElementById('tutor-name').value = `${tutor.TutorName} ${tutor.TutorSurname}`;
+            document.getElementById('module-name').value = module ? module.ModuleName : 'N/A';
+
+            // Load available slots
+            const slots = DB.getAvailableSlots(tutorId, moduleCode);
+            const slotSelect = document.getElementById('slot_id');
+            slotSelect.innerHTML = '<option value="">Select a time slot</option>';
+            
+            slots.forEach(slot => {
+                const option = document.createElement('option');
+                option.value = slot.SlotID;
+                option.textContent = `${slot.SlotDate} - ${slot.StartTime} to ${slot.EndTime}`;
+                slotSelect.appendChild(option);
+            });
+
+            if (slots.length === 0) {
+                const option = document.createElement('option');
+                option.textContent = 'No available slots';
+                slotSelect.appendChild(option);
+            }
+
+            document.getElementById('booking-modal').classList.add('active');
+        }
+
+        function closeBookingModal() {
+            document.getElementById('booking-modal').classList.remove('active');
+        }
+
+        document.getElementById('booking-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const user = Auth.getCurrentUser();
+            const tutorId = document.getElementById('tutor_id').value;
+            const moduleCode = document.getElementById('module_code').value;
+            const slotId = document.getElementById('slot_id').value;
+            const reason = document.getElementById('reason').value;
+
+            const result = DB.bookSlot(slotId, user.id, tutorId, moduleCode, reason);
+            
+            if (result.success) {
+                showAlert('Booking submitted successfully!', 'success');
+                closeBookingModal();
+                loadTutors(); // Refresh tutor list
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        });
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => { alertContainer.innerHTML = ''; }, 3000);
+        }
+    </script>
+</body>
+</html>

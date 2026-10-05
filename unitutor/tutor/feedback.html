@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback - UniTutor</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand"><a href="../index.html"><h1>UniTutor</h1></a></div>
+            <ul class="nav-menu">
+                <li><span id="user-name">Welcome, Tutor</span></li>
+                <li><a href="#" onclick="Auth.logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h2>Tutor Panel</h2></div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html">Dashboard</a>
+                <a href="modules.html">My Modules</a>
+                <a href="slots.html">Available Slots</a>
+                <a href="bookings.html">Bookings</a>
+                <a href="sessions.html">Sessions</a>
+                <a href="feedback.html" class="active">Feedback</a>
+                <a href="profile.html">Profile</a>
+                <a href="#" onclick="Auth.logout()" class="logout">Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="page-header"><h1>Feedback</h1><p>View feedback from students</p></div>
+            <div id="alert-container"></div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3 id="stat-rating">0</h3>
+                    <p>Average Rating</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-feedback">0</h3>
+                    <p>Total Feedback</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="stat-five">0</h3>
+                    <p>5-Star Reviews</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2>All Feedback</h2></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="feedback-table">
+                            <thead>
+                                <tr>
+                                    <th>Feedback ID</th>
+                                    <th>Student</th>
+                                    <th>Rating</th>
+                                    <th>Comments</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../assets/js/database.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        if (!Auth.requireAuth('tutor')) window.location.href = '../login.html';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const user = Auth.getCurrentUser();
+            document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            loadFeedback();
+        });
+
+        function loadFeedback() {
+            const user = Auth.getCurrentUser();
+            const feedback = DB.getAll('Feedback').filter(f => f.TutorID === user.id);
+            const students = DB.getAll('Student');
+            const tbody = document.querySelector('#feedback-table tbody');
+            tbody.innerHTML = '';
+
+            // Statistics
+            const avgRating = feedback.length > 0 
+                ? (feedback.reduce((sum, f) => sum + f.Rating, 0) / feedback.length).toFixed(1)
+                : 'N/A';
+            document.getElementById('stat-rating').textContent = avgRating;
+            document.getElementById('stat-feedback').textContent = feedback.length;
+            document.getElementById('stat-five').textContent = feedback.filter(f => f.Rating === 5).length;
+
+            feedback.forEach(f => {
+                const student = students.find(s => s.StudentID === f.StudentID);
+                const stars = '★'.repeat(f.Rating) + '☆'.repeat(5 - f.Rating);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${f.FeedbackID}</td>
+                    <td>${student ? student.StudentName + ' ' + student.StudentSurname : 'N/A'}</td>
+                    <td><span style="color: #f59e0b;">${stars}</span> (${f.Rating}/5)</td>
+                    <td>${f.FeedbackComments}</td>
+                    <td>${new Date(f.FeedbackDate).toLocaleDateString()}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            if (feedback.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">No feedback received yet</td></tr>';
+            }
+        }
+    </script>
+</body>
+</html>
